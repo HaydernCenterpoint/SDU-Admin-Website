@@ -1,0 +1,7 @@
+node_modules
+dist
+.env
+.git
+laravel/vendor
+laravel/storage/*.log
+laravel/bootstrap/cache/*

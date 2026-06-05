@@ -1,0 +1,283 @@
+// ──────────────────────────────────────────────────────────────────────────────
+// SDU Admin - Prisma Schema
+// Type-safe database access. Auto-generates TS types used in tRPC routers.
+// Mirrors the original Laravel migrations: 2024_01_01 + addendum migrations.
+// ──────────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums (replacing string-based statuses to kill enum drift bugs) ────────
+
+enum UserRole {
+  ADMIN
+  BOARD
+  QC
+  DEPT_HEAD
+  TEACHER
+  STUDENT
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+}
+
+enum Gender {
+  Nam
+  Nu
+  Khac
+}
+
+enum PlanStatus {
+  DRAFT
+  SUBMITTED
+  DEPT_APPROVED_TO_BGH
+  DEPT_REJECTED_PHASE1
+  DEPT_REJECTED_PHASE2
+  REPORT_SUBMITTED
+  ACCEPTED_TO_BGH
+  COMPLETED
+  CANCELLED
+}
+
+enum PlanItemType {
+  TEACHER
+  STUDENT
+}
+
+enum WeekStatus {
+  PENDING
+  COMPLETED
+  RESCHEDULED
+}
+
+enum ActivityType {
+  login
+  logout
+  create_plan
+  update_plan
+  delete_plan
+  change_password
+  request_update_profile
+  update_profile
+}
+
+// ─── Tables ────────────────────────────────────────────────────────────────
+
+model Department {
+  id        Int      @id @default(autoincrement())
+  name      String
+  code      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users User[]
+  plans Plan[]
+
+  @@map("departments")
+}
+
+model User {
+  id                Int        @id @default(autoincrement())
+  name              String
+  email             String     @unique // Actually stores the user code (kept for parity)
+  emailVerifiedAt   DateTime?  @map("email_verified_at")
+  password          String
+  role              UserRole   @default(TEACHER)
+  status            UserStatus @default(ACTIVE)
+  departmentId      Int?       @map("department_id")
+  avatar            String?
+  dob               DateTime?  @db.Date
+  gender            Gender?
+  contactEmail      String?    @map("contact_email")
+  pendingProfile    Json?      @map("pending_profile")
+  rememberToken     String?    @map("remember_token")
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
+
+  department   Department?     @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  ownedPlans   Plan[]          @relation("PlanOwner")
+  executions   PlanItem[]      @relation("PlanItemExecutor")
+  mentorships  PlanItem[]      @relation("PlanItemMentor")
+  weeks        PlanWeek[]
+  activities   UserActivity[]
+  auditLogs    AuditLog[]
+  tokens       PersonalAccessToken[]
+
+  @@index([departmentId])
+  @@index([status])
+  @@index([role])
+  @@map("users")
+}
+
+model PersonalAccessToken {
+  id          Int       @id @default(autoincrement())
+  tokenableType String  @map("tokenable_type")
+  tokenableId   Int     @map("tokenable_id")
+  name        String
+  token       String   @unique
+  abilities   String?  @db.Text
+  lastUsedAt  DateTime? @map("last_used_at")
+  expiresAt   DateTime? @map("expires_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [tokenableId], references: [id], onDelete: Cascade, map: "personal_access_tokens_tokenable_id_fk")
+
+  @@index([tokenableType, tokenableId])
+  @@map("personal_access_tokens")
+}
+
+model Location {
+  id        Int      @id @default(autoincrement())
+  name      String
+  code      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  equipment Equipment[]
+  planItems PlanItem[]
+
+  @@map("locations")
+}
+
+model Equipment {
+  id          Int       @id @default(autoincrement())
+  name        String
+  code        String?
+  yearOfUse   Int?      @map("year_of_use")
+  locationId  Int?      @map("location_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  location  Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  planItems PlanItem[]
+
+  @@index([locationId])
+  @@map("equipment")
+}
+
+model Plan {
+  id                Int        @id @default(autoincrement())
+  code              String     @unique
+  title             String
+  month             Int
+  year              Int
+  userId            Int        @map("user_id")
+  departmentId      Int        @map("department_id")
+  status            PlanStatus @default(DRAFT)
+  score             Int?
+  feedback          String?    @db.Text
+  attachedFilePath  String?    @map("attached_file_path")
+  attachedFileName  String?    @map("attached_file_name")
+  attachments       Json?
+  templateId        String?    @default("tpl-1") @map("template_id")
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
+
+  teacher    User         @relation("PlanOwner", fields: [userId], references: [id], onDelete: Cascade)
+  department Department   @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  items      PlanItem[]
+  weeks      PlanWeek[]
+  auditLogs  AuditLog[]
+
+  @@index([userId])
+  @@index([departmentId])
+  @@index([status])
+  @@index([year, month])
+  @@map("plans")
+}
+
+model PlanItem {
+  id                    Int          @id @default(autoincrement())
+  planId                Int          @map("plan_id")
+  topic                 String
+  locationId            Int?         @map("location_id")
+  equipmentId           Int?         @map("equipment_id")
+  equipmentNameManual   String?      @map("equipment_name_manual")
+  equipmentYearManual   Int?         @map("equipment_year_manual")
+  executorId            Int?         @map("executor_id")
+  mentorId              Int?         @map("mentor_id")
+  timeRange             String?      @map("time_range")
+  expectedResult        String?      @db.Text @map("expected_result")
+  plannedHours          Int          @default(0) @map("planned_hours")
+  type                  PlanItemType @default(TEACHER)
+  createdAt             DateTime     @default(now()) @map("created_at")
+  updatedAt             DateTime     @updatedAt @map("updated_at")
+
+  plan      Plan      @relation(fields: [planId], references: [id], onDelete: Cascade)
+  location  Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  equipment Equipment? @relation(fields: [equipmentId], references: [id], onDelete: SetNull)
+  executor  User?     @relation("PlanItemExecutor", fields: [executorId], references: [id], onDelete: SetNull)
+  mentor    User?     @relation("PlanItemMentor", fields: [mentorId], references: [id], onDelete: SetNull)
+
+  @@index([planId])
+  @@index([executorId])
+  @@index([mentorId])
+  @@map("plan_items")
+}
+
+model PlanWeek {
+  id              Int        @id @default(autoincrement())
+  planId          Int        @map("plan_id")
+  userId          Int        @map("user_id")
+  weekLabel       String     @map("week_label")
+  plannedHours    Int        @default(0) @map("planned_hours")
+  actualHours     Int?       @map("actual_hours")
+  status          WeekStatus @default(PENDING)
+  busyNote        String?    @db.Text @map("busy_note")
+  rescheduleDate  String?    @map("reschedule_date")
+  rescheduleRoom  String?    @map("reschedule_room")
+  rescheduleNote  String?    @db.Text @map("reschedule_note")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+
+  plan Plan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([planId])
+  @@index([userId])
+  @@index([status])
+  @@map("plan_weeks")
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  planId    Int      @map("plan_id")
+  userId    Int      @map("user_id")
+  action    String
+  comment   String?  @db.Text
+  timestamp DateTime
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  plan Plan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([planId])
+  @@index([userId])
+  @@map("audit_logs")
+}
+
+model UserActivity {
+  id          Int          @id @default(autoincrement())
+  userId      Int          @map("user_id")
+  type        ActivityType
+  description String?
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@map("user_activities")
+}

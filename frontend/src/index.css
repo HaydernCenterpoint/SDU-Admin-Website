@@ -1,0 +1,158 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..900;1,14..32,300..900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Sao Do University Design Tokens ─────────────────── */
+:root {
+  --primary:        #CC0000;
+  --primary-dark:   #990000;
+  --primary-light:  #FF1A1A;
+  --secondary:      #0099DD;
+  --accent:         #FFD700;
+  --navy:           #1B365D;
+  --surface:        #F5F6FA;
+  --border:         #E8EAF0;
+}
+
+/* ── Base ─────────────────────────────────────────────── */
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html { -webkit-font-smoothing: antialiased; }
+
+  body {
+    @apply bg-[#F5F6FA] text-slate-800 transition-colors duration-300;
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  }
+  .dark body {
+    @apply bg-[#0F172A] text-slate-200;
+  }
+  
+  /* Auto-mapping Light to Dark for standard Slate classes used in TSX */
+  .dark .text-slate-800, .dark .text-slate-900, .dark .text-navy { color: #f1f5f9 !important; }
+  .dark .text-slate-600, .dark .text-slate-700 { color: #cbd5e1 !important; }
+  .dark .text-slate-500 { color: #94a3b8 !important; }
+  .dark .bg-white { background-color: #1e293b !important; border-color: #334155 !important; }
+  .dark .bg-slate-50, .dark .bg-slate-100, .dark .bg-slate-200 { background-color: #334155 !important; border-color: #475569 !important; }
+  .dark .border-slate-100, .dark .border-slate-200 { border-color: #334155 !important; }
+}
+
+/* ── Components ───────────────────────────────────────── */
+@layer components {
+
+  /* Cards */
+  .card {
+    @apply bg-white border border-slate-200/80 rounded-2xl shadow-sm;
+  }
+  .card-hover {
+    @apply card hover:shadow-md hover:-translate-y-0.5 transition-all duration-200;
+  }
+
+  /* Buttons */
+  .btn-primary {
+    @apply inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white
+           bg-[#CC0000] hover:bg-[#B80010] active:scale-95 shadow-md shadow-red-700/20
+           transition-all duration-150;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm
+           bg-white border border-slate-200 text-slate-700
+           hover:bg-slate-50 hover:border-slate-300 active:scale-95
+           transition-all duration-150;
+  }
+  .btn-outline {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm
+           border border-[#CC0000]/40 text-[#CC0000]
+           hover:bg-[#CC0000]/5 active:scale-95 transition-all;
+  }
+
+  /* Badges */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide;
+  }
+  .badge-draft      { @apply badge bg-slate-100   text-slate-500; }
+  .badge-pending    { @apply badge bg-blue-100    text-blue-700; }
+  .badge-approved   { @apply badge bg-emerald-100 text-emerald-700; }
+  .badge-rejected   { @apply badge bg-red-100     text-red-700; }
+  .badge-warning    { @apply badge bg-amber-100   text-amber-700; }
+
+  /* Form inputs */
+  .input {
+    @apply w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm
+           text-slate-800 placeholder:text-slate-400
+           focus:ring-2 focus:ring-[#CC0000]/20 focus:border-[#CC0000]/60 outline-none
+           transition-all;
+  }
+  .label {
+    @apply block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5;
+  }
+
+  /* Table */
+  .table-header {
+    @apply text-[10px] font-black text-slate-400 uppercase tracking-widest;
+  }
+  .table-row {
+    @apply border-b border-slate-100 hover:bg-[#CC0000]/[0.02] transition-colors;
+  }
+
+  /* Stat card with colored top border */
+  .stat-card {
+    @apply card p-6 flex items-center gap-4 relative overflow-hidden;
+  }
+  .stat-card::before {
+    content: '';
+    @apply absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#CC0000] to-[#FF6666];
+  }
+
+  /* Page header */
+  .page-header {
+    @apply flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-6 mb-6
+           border-b border-slate-200/80;
+  }
+  .page-title {
+    @apply text-2xl font-extrabold text-navy tracking-tight;
+  }
+  .page-subtitle {
+    @apply text-sm text-slate-500 font-medium mt-1;
+  }
+}
+
+/* ── Utilities ────────────────────────────────────────── */
+@layer utilities {
+  .text-primary   { color: var(--primary); }
+  .text-secondary { color: var(--secondary); }
+  .text-accent    { color: var(--accent); }
+  .text-navy      { color: var(--navy); }
+  .bg-primary     { background-color: var(--primary); }
+  .bg-secondary   { background-color: var(--secondary); }
+  .bg-navy        { background-color: var(--navy); }
+
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+  .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+
+  .animate-in {
+    animation: fadeInUp 0.35s ease both;
+  }
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .gradient-sdo {
+    background: linear-gradient(135deg, #B80010 0%, #CC0000 50%, #990000 100%);
+  }
+  .gradient-sdo-text {
+    background: linear-gradient(135deg, #CC0000, #FF4444);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
+
+/* ── Custom Scrollbar ─────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }

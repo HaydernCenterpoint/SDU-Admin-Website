@@ -1,0 +1,13 @@
+{
+  "name": "plansdu",
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "http://163.61.110.126/api/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

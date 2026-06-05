@@ -1,0 +1,64 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# SDU Admin — Full-stack Docker Compose (NestJS + tRPC + Prisma + MySQL + Vite)
+# Run with:  docker compose -f docker-compose.nest.yml up -d
+# Stop:      docker compose -f docker-compose.nest.yml down
+# ──────────────────────────────────────────────────────────────────────────────
+version: "3.9"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: sdu-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: sdu_admin
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-ppassword"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # ─── Backend NestJS ────────────────────────────────────────────────────
+  backend:
+    build: ./backend-nest
+    container_name: sdu-backend-nest
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "mysql://root:password@mysql:3306/sdu_admin"
+      PORT: 4000
+      NODE_ENV: production
+      CORS_ORIGIN: "http://localhost:5173"
+      JWT_SECRET: "replace-me-with-a-long-random-secret"
+      JWT_EXPIRES_IN: "7d"
+      UPLOAD_DIR: /app/uploads
+      MAX_FILE_SIZE_MB: "10"
+    ports:
+      - "4000:4000"
+    volumes:
+      - backend_uploads:/app/uploads
+
+  # ─── Frontend Vite ─────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.frontend
+    container_name: sdu-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      VITE_API_URL: "http://localhost:4000/api/trpc"
+    ports:
+      - "5173:5173"
+
+volumes:
+  mysql_data:
+  backend_uploads:

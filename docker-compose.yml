@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  # PHP Service
+  app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: saodo-app
+    container_name: saodo-app
+    restart: unless-stopped
+    working_dir: /var/www
+    ports:
+      - "8002:8000"
+    volumes:
+      - ./backend:/var/www
+    networks:
+      - saodo-network
+    command: sh -c "php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=$${PORT:-8000}"
+
+  # Nginx Service
+  webserver:
+    image: nginx:alpine
+    container_name: saodo-webserver
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - ./backend:/var/www
+      - ./backend/docker/nginx.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - saodo-network
+
+  # Database Service
+  db:
+    image: mysql:8.0
+    container_name: saodo-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-saodo_system}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root}
+    ports:
+      - "3306:3306"
+    volumes:
+      - saodo-db-data:/var/lib/mysql
+    networks:
+      - saodo-network
+
+  # Frontend Service (React + Vite)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.frontend
+    container_name: saodo-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - saodo-network
+
+  # phpMyAdmin Service
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: saodo-phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: db
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root}
+    networks:
+      - saodo-network
+
+networks:
+  saodo-network:
+    driver: bridge
+
+
+volumes:
+  saodo-db-data:
+    driver: local
