@@ -42,7 +42,7 @@ const DEFAULT_TEMPLATES: TableTemplate[] = [
 export const trpcClient = createTRPCClient<AppRouter>({
   links: [
     httpBatchLink({
-      url: import.meta.env.VITE_API_URL || 'http://localhost:4000/api/trpc',
+      url: import.meta.env.VITE_API_URL || '/api/trpc',
       transformer: superjson,
       headers() {
         const token = localStorage.getItem('token');
