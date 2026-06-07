@@ -55,7 +55,7 @@ const ManagementDashboard = () => {
   const { plans } = useAppStore();
   const [departments, setDepartments] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
-  const [selectedSemester, setSelectedSemester] = useState<string>('HK1-2025');
+  const [selectedSemester, setSelectedSemester] = useState<string>('HK2-2025');
 
   useEffect(() => {
     api.get('/departments').then((res: any) => setDepartments(res.data)).catch(console.error);
@@ -76,6 +76,9 @@ const ManagementDashboard = () => {
     if (semester === 'HK1-2025') {
       return (p.year === 2025 && [9, 10, 11, 12].includes(p.month)) ||
              (p.year === 2026 && p.month === 1);
+    }
+    if (semester === 'HK2-2025') {
+      return p.year === 2026 && [2, 3, 4, 5, 6, 7].includes(p.month);
     }
     return true;
   };
@@ -186,7 +189,8 @@ const ManagementDashboard = () => {
             { value: 'ALL', label: 'Tất cả Học kỳ' },
             { value: 'HK1-2024', label: 'Học kỳ 1 - 2024' },
             { value: 'HK2-2024', label: 'Học kỳ 2 - 2024' },
-            { value: 'HK1-2025', label: 'Học kỳ 1 - 2025' }
+            { value: 'HK1-2025', label: 'Học kỳ 1 - 2025' },
+            { value: 'HK2-2025', label: 'Học kỳ 2 - 2025' }
           ]}
           icon={<CalendarDays size={15} />}
           minWidth="150px"
