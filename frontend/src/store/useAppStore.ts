@@ -296,9 +296,9 @@ const mapPlan = (p: any): Plan => {
   if (!p) return p;
   return {
     ...p,
-    teacherId: p.user_id || p.teacherId,
+    teacherId: p.userId || p.user_id || p.teacherId,
     teacherName: p.teacher?.name || p.teacherName || 'Giảng viên',
-    departmentId: p.department_id || p.departmentId,
+    departmentId: p.departmentId || p.department_id,
     departmentName: p.department?.name || p.departmentName || '',
     items: (p.items || []).map((i: any) => {
       let parsed: any = {};
