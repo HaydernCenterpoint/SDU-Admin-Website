@@ -617,12 +617,15 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   deletePlan: async (planId: string) => {
     const id = typeof planId === 'string' ? parseInt(planId, 10) : planId;
+    const originalPlans = get().plans;
     // Optimistic delete
     set((state) => ({ plans: state.plans.filter(p => p.id !== String(planId)) }));
     try {
       await trpcClient.plans.delete.mutate({ id });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to delete plan on server:', error);
+      set({ plans: originalPlans });
+      alert(error.message || 'Không thể xóa kế hoạch. Vui lòng kiểm tra quyền hoặc trạng thái kế hoạch.');
     }
   },
 }));

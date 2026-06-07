@@ -104,6 +104,17 @@ export class PlansService {
     }
     if (input.month < 1 || input.month > 12) throw new BadRequestException('Tháng không hợp lệ');
 
+    const existing = await this.prisma.plan.findFirst({
+      where: {
+        userId: actor.id,
+        month: input.month,
+        year: input.year,
+      },
+    });
+    if (existing) {
+      throw new ConflictException(`Bạn đã có kế hoạch cho tháng ${input.month}/${input.year}.`);
+    }
+
     const code = this.generateCode();
     return this.prisma.$transaction(async (tx) => {
       const plan = await tx.plan.create({
