@@ -34,7 +34,8 @@ const NewPlanModal = ({ onClose, onCreated }: { onClose: () => void; onCreated: 
   const [importedFile, setImportedFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
+  const [weeks, setWeeks] = useState([0, 0, 0, 0, 0]);
+  
   const currentDate = new Date();
   const [planMonth, setPlanMonth] = useState(currentDate.getMonth() + 1);
   const [planYear, setPlanYear] = useState(currentDate.getFullYear());
@@ -62,7 +63,7 @@ const NewPlanModal = ({ onClose, onCreated }: { onClose: () => void; onCreated: 
   const handleCreate = async () => {
     if (!title.trim() || !currentUser) return;
     setError(null);
-
+    
     const month = planMonth;
     const year = planYear;
 
@@ -94,7 +95,7 @@ const NewPlanModal = ({ onClose, onCreated }: { onClose: () => void; onCreated: 
 
     setSubmitting(true);
     try {
-      // Create a blank draft then open PlanEditor (Chi tiết hoạt động + Phân bổ thời gian).
+      // Blank draft -> PlanEditor owns activity details + schedule UI
       let items: any[] = [];
       if (importedFile) {
         items = [
@@ -127,6 +128,7 @@ const NewPlanModal = ({ onClose, onCreated }: { onClose: () => void; onCreated: 
       onCreated(newPlan);
     } catch (err: any) {
       setError(err?.message || 'Không tạo được kế hoạch. Vui lòng thử lại.');
+      return;
     } finally {
       setSubmitting(false);
     }
@@ -201,7 +203,400 @@ const NewPlanModal = ({ onClose, onCreated }: { onClose: () => void; onCreated: 
             </div>
           </div>
           
+          <div className="mt-2">
+            <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">Dự kiến số giờ <span className="text-[10px] text-red-500 normal-case">(Thời gian thực hiện phải sau ngày 05)</span></label>
+            <div className="flex gap-2">
+               {[1, 2, 3, 4, 5].map((w, idx) => (
+                 <div key={w} className="flex-1">
+                    <span className="text-[10px] font-bold text-zinc-400 block mb-1 text-center">T.{w}</span>
+                    <input 
+                      type="number" min="0" 
+                      className="w-full text-center px-1 py-2 border border-zinc-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none"
+                      value={weeks[idx] || ''}
+                      onChange={(e) => {
+                        const newWeeks = [...weeks];
+                        newWeeks[idx] = parseInt(e.target.value) || 0;
+                        setWeeks(newWeeks);
+                      }}
+                    />
+                 </div>
+               ))}
+            </div>
+          </div>
+
+          <div className="mt-2">
+            <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">Đính kèm tệp Báo cáo/Kế hoạch</label>
+            <label className="border-2 border-dashed border-zinc-300 rounded-xl p-6 flex flex-col justify-center items-center text-center bg-zinc-50 hover:bg-zinc-100 transition-colors cursor-pointer relative overflow-hidden group mb-0">
+               <input 
+                 type="file" 
+                 accept=".doc,.docx,.xls,.xlsx,.pdf" 
+                 className="absolute inset-0 opacity-0 cursor-pointer h-full w-full" 
+                 onChange={(e) => setImportedFile(e.target.files?.[0] || null)} 
+               />
+               <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300 border border-zinc-100">
+                 <FileText size={20} className="text-[#CC0000]" />
+               </div>
+               <span className="text-sm font-bold text-zinc-700 truncate max-w-[250px] mb-1">
+                 {importedFile ? importedFile.name : 'Tải lên hoặc kéo thả file'}
+               </span>
+               {!importedFile && <span className="text-xs text-zinc-500 font-medium">Hỗ trợ .doc, .docx, .xls, .xlsx, .pdf</span>}
+            </label>
+          </div>
+
+        </div>
+        <div className="flex gap-3 mt-8">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 border border-zinc-200 rounded-xl text-sm font-bold text-zinc-600 hover:bg-zinc-50"
+          >
+            Hủy
+          </button>
+          <button
+            onClick={handleCreate}
+            disabled={!title.trim() || submitting}
+            className="flex-1 py-2.5 bg-primary text-white rounded-xl text-sm font-bold shadow-md hover:opacity-90 disabled:opacity-40 transition-all"
+          >
+            {submitting ? 'Đang tạo...' : 'Tạo kế hoạch'}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+
+  return createPortal(content, document.body);
+};
+
+// ---- Confirm Delete Modal ----
+const ConfirmDeleteModal = ({ plan, onClose, onConfirm }: { plan: Plan; onClose: () => void; onConfirm: () => void }) => {
+  return createPortal(
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-zinc-900/40 backdrop-blur-sm p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden"
+      >
+        <div className="p-5 border-b border-zinc-100 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center shrink-0">
+            <Trash2 size={20} />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-slate-800 leading-tight">Xác nhận xóa</h3>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-red-500 mt-0.5">Không thể hoàn tác</p>
+          </div>
+        </div>
+        <div className="p-5 text-sm text-slate-600 leading-relaxed">
+           Bạn có chắc chắn muốn xóa kế hoạch <strong className="text-slate-900">"{plan.title}"</strong> không? Toàn bộ dữ liệu của kế hoạch này sẽ bị xóa vĩnh viễn.
+        </div>
+        <div className="flex gap-3 px-5 pb-5">
           <button 
+            onClick={onClose} 
+            className="flex-1 py-2.5 rounded-xl text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200/70 transition-colors"
+          >
+            Hủy
+          </button>
+          <button 
+            onClick={onConfirm} 
+            className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-[#CC0000] text-white shadow-md hover:bg-[#A30000] focus:ring-4 focus:ring-[#CC0000]/20 transition-all"
+          >
+            Xóa kế hoạch
+          </button>
+        </div>
+      </motion.div>
+    </div>,
+    document.body
+  );
+};
+
+// ---- New Dept Modal ----
+const NewDeptModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) => {
+  const [name, setName] = useState('');
+  const [code, setCode] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleCreate = async () => {
+    if (!name.trim() || !code.trim()) {
+      setError('Vui lòng nhập đầy đủ Tên khoa và Mã khoa');
+      return;
+    }
+    setSubmitting(true);
+    setError('');
+    try {
+      await api.post('/departments', { name: name.trim(), code: code.trim().toUpperCase() });
+      onSuccess();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Có lỗi xảy ra khi tạo khoa mới. Mã khoa có thể đã tồn tại.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return createPortal(
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-zinc-950/40 backdrop-blur-sm p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8"
+      >
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-lg font-black text-navy border-b-2 border-transparent">Tạo Khoa mới</h3>
+          <button onClick={onClose} className="p-1.5 hover:bg-zinc-100 rounded-lg text-zinc-400"><X size={18} /></button>
+        </div>
+        
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl font-medium">
+            {error}
+          </div>
+        )}
+
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">Mã khoa (Viết tắt)</label>
+            <input
+              type="text"
+              placeholder="VD: CNTT"
+              value={code}
+              onChange={e => setCode(e.target.value.toUpperCase())}
+              className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">Tên khoa</label>
+            <input
+              type="text"
+              placeholder="VD: Khoa Công nghệ thông tin"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-8">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 border border-zinc-200 rounded-xl text-sm font-bold text-zinc-600 hover:bg-zinc-50 transition-colors"
+          >
+            Hủy
+          </button>
+          <button
+            onClick={handleCreate}
+            disabled={!name.trim() || !code.trim() || submitting}
+            className="flex-1 py-2.5 bg-primary text-white rounded-xl text-sm font-bold shadow-md hover:bg-[#A30000] disabled:opacity-40 transition-all font-sans"
+          >
+            {submitting ? 'Đang tạo...' : 'Lưu thông tin'}
+          </button>
+        </div>
+      </motion.div>
+    </div>,
+    document.body
+  );
+};
+
+// ---- Main Component ----
+const MyPlans = ({ onSelectPlan }: { onSelectPlan: (plan: Plan) => void }) => {
+  const { currentUser, updatePlanStatus, deletePlan, plans, tableTemplates } = useAppStore();
+  
+  const getPlanTemplate = (plan: any) => {
+    return tableTemplates.find(t => t.id === plan.templateId) || tableTemplates[0];
+  };
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showNewModal, setShowNewModal] = useState(false);
+  const [showNewDeptModal, setShowNewDeptModal] = useState(false);
+  const [planToDelete, setPlanToDelete] = useState<Plan | null>(null);
+  const [filterMonth, setFilterMonth] = useState('ALL');
+  const [filterStatus, setFilterStatus] = useState('ALL');
+  const [filterDept, setFilterDept] = useState('ALL');
+  const [selectedProfile, setSelectedProfile] = useState<any>(null);
+  const [users, setUsers] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+
+  const fetchDepartments = () => {
+    api.get('/departments').then((res: any) => setDepartments(res.data)).catch(console.error);
+  };
+
+  useEffect(() => {
+    api.get('/users/active').then((res: any) => setUsers(res.data)).catch(console.error);
+    fetchDepartments();
+  }, []);
+
+  // get all unique months from user's plans
+  const userPlans = currentUser?.role === 'BOARD'
+    ? plans.filter(p => ['DEPT_APPROVED_TO_BGH', 'REPORT_SUBMITTED', 'ACCEPTED_TO_BGH'].includes(p.status))
+    : currentUser?.role === 'DEPT_HEAD'
+      ? plans.filter(p => p.departmentId == currentUser.departmentId)
+      : plans.filter(p => p.teacherId === currentUser?.id || (p as any).user_id === currentUser?.id);
+  const availableMonths = Array.from(new Set(userPlans.map(p => `Tháng ${p.month}/${p.year}`)));
+
+  const handleExportMonthPlan = (type: 'pdf' | 'docx' | 'print') => {
+    let targetMonthStr = filterMonth;
+    
+    if (filterMonth === 'ALL') {
+      if (availableMonths.length > 0) {
+        targetMonthStr = availableMonths[0];
+      } else {
+        alert("Không có kế hoạch nào để xuất!");
+        return;
+      }
+    }
+
+    const match = targetMonthStr.match(/Tháng (\d+)\/(\d+)/);
+    if (!match) return;
+    const m = match[1];
+    const y = match[2];
+
+    const formatWeeks = (weeks: any[]) => {
+      if (!weeks || weeks.length === 0) return '';
+      
+      return weeks.map(w => {
+        if (!w.date) return null;
+        const dates = w.date.split(',')
+          .map((d: string) => {
+            const parts = d.trim().split('-');
+            return parts.length === 3 ? parseInt(parts[2], 10) : parseInt(d.trim(), 10);
+          })
+          .filter((d: number) => !isNaN(d))
+          .sort((a: number, b: number) => a - b);
+        
+        if (dates.length === 0) return null;
+        
+        let ranges = [];
+        let start = dates[0];
+        let prev = dates[0];
+        for (let i = 1; i <= dates.length; i++) {
+          if (i < dates.length && dates[i] === prev + 1) {
+            prev = dates[i];
+          } else {
+            if (start === prev) {
+              ranges.push(`${start}`);
+            } else {
+              ranges.push(`${start}-${prev}`);
+            }
+            if (i < dates.length) {
+              start = dates[i];
+              prev = dates[i];
+            }
+          }
+        }
+        
+        const dateStr = `Ngày ${ranges.join(', ')}/${m}`;
+        const startLes = parseInt(w.startLesson?.toString() || '1', 10);
+        const endLes = parseInt(w.endLesson?.toString() || startLes.toString(), 10);
+        const lesStr = startLes === endLes ? `${startLes}` : `${startLes}-${endLes}`;
+        
+        return `${dateStr}; ${lesStr}`;
+      }).filter(Boolean).join('\n');
+    };
+
+    const monthPlans = userPlans.filter(p => `Tháng ${p.month}/${p.year}` === targetMonthStr);
+    const combinedItems: any[] = [];
+    monthPlans.forEach(p => {
+      const timeStr = formatWeeks(p.weeks);
+      if (p.items) {
+        p.items.forEach((item: any) => {
+          combinedItems.push({
+            ...item,
+            thoi_gian: timeStr,
+            giang_vien: item.giang_vien || p.teacherName || '',
+            _planRef: p
+          });
+        });
+      }
+    });
+
+    const combinedPlan = {
+      month: m,
+      year: y,
+      departmentName: currentUser?.departmentName,
+      items: combinedItems
+    };
+
+    if (type === 'pdf') exportPlanToPdf(combinedPlan, currentUser?.name);
+    else if (type === 'docx') exportPlanToDocx(combinedPlan, currentUser?.name);
+    else if (type === 'print') printPlanBrowser(combinedPlan, currentUser?.name);
+  };
+
+  // Apply search filter (for plans level)
+  const filtered = userPlans.filter(p => {
+    const codeMatch = p.code.toLowerCase().includes(searchTerm.toLowerCase());
+    const titleMatch = p.title.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Regular status matching for TEACHER, otherwise ignore it here because BOARD/DEPT_HEAD will filter items
+    const statusMatch = (currentUser?.role === 'TEACHER') 
+       ? (filterStatus === 'ALL' || p.status === filterStatus)
+       : true; 
+       
+    // department filter (only for BOARD)
+    const deptMatch = (currentUser?.role === 'BOARD') 
+      ? (filterDept === 'ALL' || p.departmentId?.toString() === filterDept.toString())
+      : true;
+
+    const monthStr = `Tháng ${p.month}/${p.year}`;
+    const monthMatch = filterMonth === 'ALL' || monthStr === filterMonth;
+    
+    return (codeMatch || titleMatch) && statusMatch && deptMatch && monthMatch;
+  }).sort((a, b) => {
+    const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return db - da;
+  });
+
+  const handleQuickSubmit = (plan: Plan) => {
+    const nextStatus = currentUser?.role === 'DEPT_HEAD' ? 'DEPT_APPROVED_TO_BGH' : 'SUBMITTED';
+    updatePlanStatus(plan.id, nextStatus);
+  };
+
+  // Group by month
+  const groupedPlans = filtered.reduce((acc: any, plan) => {
+    const key = `Tháng ${plan.month}/${plan.year}`;
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(plan);
+    return acc;
+  }, {});
+
+  return (
+    <div className="space-y-6 animate-in">
+      <div className="page-header">
+        <div>
+          <h2 className="page-title">
+            {currentUser?.role === 'BOARD' ? 'Kế hoạch các Khoa' : currentUser?.role === 'DEPT_HEAD' ? 'Kế hoạch của khoa' : 'Kế hoạch của tôi'}
+          </h2>
+          <p className="page-subtitle">
+            {currentUser?.role === 'BOARD'
+               ? 'Quản lý và theo dõi toàn bộ kế hoạch từ tất cả các khoa.'
+               : currentUser?.role === 'DEPT_HEAD' 
+                 ? 'Quản lý và theo dõi tiến độ các kế hoạch của giáo viên trong khoa.'
+                 : 'Quản lý và theo dõi tiến độ các kế hoạch giảng dạy cá nhân.'}
+          </p>
+        </div>
+        {currentUser?.role === 'TEACHER' && (
+          <button
+            onClick={() => setShowNewModal(true)}
+            className="btn-primary"
+          >
+            <Plus size={16} />
+            Lập kế hoạch mới
+          </button>
+        )}
+        {currentUser?.role === 'DEPT_HEAD' && (
+          <div className="flex gap-2">
+            <div className="relative group">
+              <button 
+                className="btn-primary bg-white text-primary border-2 border-primary hover:bg-red-50"
+                title="Xuất kế hoạch"
+              >
+                <FileText size={16} /> Xuất kế hoạch
+              </button>
+              <div className="absolute top-full right-0 pt-1 w-36 z-50 hidden group-hover:block">
+                <div className="bg-white border border-zinc-200 rounded-xl shadow-lg overflow-hidden">
+                  <button onClick={() => handleExportMonthPlan('docx')} className="w-full text-left px-4 py-2 text-sm font-bold text-zinc-700 hover:bg-zinc-50 border-b border-zinc-100">Xuất DOCX</button>
+                  <button onClick={() => handleExportMonthPlan('pdf')} className="w-full text-left px-4 py-2 text-sm font-bold text-zinc-700 hover:bg-zinc-50">Xuất PDF</button>
+                </div>
+              </div>
+            </div>
+            <button 
               onClick={() => handleExportMonthPlan('print')}
               className="btn-primary bg-zinc-800 text-white hover:bg-zinc-900 border-2 border-zinc-800"
               title="In kế hoạch"
