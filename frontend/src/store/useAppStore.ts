@@ -283,6 +283,63 @@ api.defaults.adapter = async (config) => {
   }
 };
 
+
+const toOptionalInt = (value: unknown): number | undefined => {
+  if (value === null || value === undefined || value === '') return undefined;
+  const n = typeof value === 'number' ? value : parseInt(String(value), 10);
+  return Number.isFinite(n) ? n : undefined;
+};
+
+const toNullableInt = (value: unknown): number | null => {
+  const n = toOptionalInt(value);
+  return n === undefined ? null : n;
+};
+
+const mapPlanItemPayload = (item: any) => {
+  const id = toOptionalInt(item?.id);
+  const expectedResult =
+    item?.expectedResult ??
+    item?.expected_result ??
+    (item?.ket_qua !== undefined || item?.chu_de !== undefined
+      ? JSON.stringify({
+          chu_de: item?.chu_de ?? item?.topic ?? 'N/A',
+          ket_qua: item?.ket_qua ?? '',
+          plannedHours: item?.plannedHours ?? item?.planned_hours ?? 0,
+          ...item,
+        })
+      : null);
+
+  return {
+    ...(id !== undefined ? { id } : {}),
+    topic: item?.topic || item?.chu_de || 'N/A',
+    locationId: toNullableInt(item?.locationId ?? item?.location_id),
+    equipmentId: toNullableInt(item?.equipmentId ?? item?.equipment_id),
+    equipmentNameManual: item?.equipmentNameManual ?? item?.equipment_name_manual ?? item?.ten_thiet_bi ?? null,
+    equipmentYearManual: toOptionalInt(item?.equipmentYearManual ?? item?.equipment_year_manual ?? item?.nam_su_dung) ?? null,
+    executorId: toNullableInt(item?.executorId ?? item?.executor_id),
+    mentorId: toNullableInt(item?.mentorId ?? item?.mentor_id),
+    timeRange: item?.timeRange ?? item?.time_range ?? item?.thoi_gian ?? null,
+    expectedResult,
+    plannedHours: toOptionalInt(item?.plannedHours ?? item?.planned_hours) ?? 0,
+    type: item?.type === 'STUDENT' ? 'STUDENT' : 'TEACHER',
+  };
+};
+
+const mapPlanWeekPayload = (week: any) => {
+  const id = toOptionalInt(week?.id);
+  return {
+    ...(id !== undefined ? { id } : {}),
+    weekLabel: week?.weekLabel || week?.week_label || 'Tuan',
+    plannedHours: toOptionalInt(week?.plannedHours ?? week?.planned_hours) ?? 0,
+    actualHours: toOptionalInt(week?.actualHours ?? week?.actual_hours) ?? null,
+    status: week?.status || week?.weekStatus || 'PENDING',
+    busyNote: week?.busyNote ?? week?.busy_note ?? null,
+    rescheduleDate: week?.rescheduleDate ?? week?.reschedule_date ?? null,
+    rescheduleRoom: week?.rescheduleRoom ?? week?.reschedule_room ?? null,
+    rescheduleNote: week?.rescheduleNote ?? week?.reschedule_note ?? null,
+  };
+};
+
 interface AppState {
   currentUser: User | null;
   token: string | null;
@@ -564,19 +621,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         month: typeof newPlan.month === 'number' ? newPlan.month : parseInt(newPlan.month || '1', 10),
         year: typeof newPlan.year === 'number' ? newPlan.year : parseInt(newPlan.year || '2026', 10),
         templateId: newPlan.templateId,
-        items: (newPlan.items || []).map((i: any) => ({
-          ...i,
-          id: i.id ? parseInt(i.id, 10) : undefined,
-          locationId: i.locationId ? parseInt(i.locationId, 10) : null,
-          equipmentId: i.equipmentId ? parseInt(i.equipmentId, 10) : null,
-          executorId: i.executorId ? parseInt(i.executorId, 10) : null,
-          mentorId: i.mentorId ? parseInt(i.mentorId, 10) : null,
-        })),
-        weeks: (newPlan.weeks || []).map((w: any) => ({
-          ...w,
-          id: w.id ? parseInt(w.id, 10) : undefined,
-          status: w.status || w.weekStatus || 'PENDING',
-        })),
+        items: (newPlan.items || []).map(mapPlanItemPayload),
+        weeks: (newPlan.weeks || []).map(mapPlanWeekPayload),
         newAttachments,
       };
 
@@ -613,19 +659,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         ...(payload.month && { month: typeof payload.month === 'number' ? payload.month : parseInt(payload.month as any, 10) }),
         ...(payload.year && { year: typeof payload.year === 'number' ? payload.year : parseInt(payload.year as any, 10) }),
         ...(payload.templateId && { templateId: payload.templateId }),
-        items: (payload.items || []).map((i: any) => ({
-          ...i,
-          id: i.id ? parseInt(i.id, 10) : undefined,
-          locationId: i.locationId ? parseInt(i.locationId, 10) : null,
-          equipmentId: i.equipmentId ? parseInt(i.equipmentId, 10) : null,
-          executorId: i.executorId ? parseInt(i.executorId, 10) : null,
-          mentorId: i.mentorId ? parseInt(i.mentorId, 10) : null,
-        })),
-        weeks: (payload.weeks || []).map((w: any) => ({
-          ...w,
-          id: w.id ? parseInt(w.id, 10) : undefined,
-          status: w.status || w.weekStatus || 'PENDING',
-        })),
+        items: (payload.items || []).map(mapPlanItemPayload),
+        weeks: (payload.weeks || []).map(mapPlanWeekPayload),
         ...(payload.keptAttachments && { keptAttachments: payload.keptAttachments }),
         ...(newAttachments.length && { newAttachments }),
       };
