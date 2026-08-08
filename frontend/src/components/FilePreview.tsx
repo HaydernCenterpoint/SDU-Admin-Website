@@ -47,21 +47,16 @@ export function FileIcon({ type }: { type: FileType }) {
 }
 
 /**
- * Fetch file as base64 JSON, then decode to ArrayBuffer.
- * IDM cannot intercept JSON responses - guaranteed fix.
+ * Fetch file as ArrayBuffer via static asset (native platform, no extra endpoint).
+ * Backend serves GET /api/uploads/:filename via useStaticAssets.
  */
 async function fetchFileData(filePath: string): Promise<ArrayBuffer> {
-  const response = await fetch('/api/preview-file', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ path: filePath }),
-  });
+  // filePath is like "1700000000000-doc.pdf" or "uploads/xxx.pdf" — normalize to filename
+  const filename = filePath.split('/').pop() || filePath;
+  const url = `/api/uploads/${encodeURIComponent(filename)}`;
+  const response = await fetch(url);
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  const json = await response.json();
-  // Decode base64 natively using fetch (super fast and doesn't block main thread)
-  const dataUri = `data:application/pdf;base64,${json.data}`;
-  const dataRes = await fetch(dataUri);
-  return dataRes.arrayBuffer();
+  return response.arrayBuffer();
 }
 
 // Import the worker locally so we never rely on external CDNs or get blocked

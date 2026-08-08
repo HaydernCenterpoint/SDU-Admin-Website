@@ -492,11 +492,11 @@ const mapPlan = (p: any): Plan => {
     }),
     auditLog: p.audit_logs || p.auditLog || [],
     attachedFilePath: p.attached_file_path || p.attachedFilePath,
-    attachedFileUrl: p.attached_file_path ? `/api/storage/${p.attached_file_path}` : p.attachedFileUrl,
+    attachedFileUrl: p.attached_file_path ? `/api/uploads/${p.attached_file_path}` : p.attachedFileUrl,
     attachedFileName: p.attached_file_name || p.attachedFileName,
     attachments: (p.attachments || []).map((att: any) => ({
       ...att,
-      url: `/api/storage/${att.path}`
+      url: `/api/uploads/${att.path}`
     })),
     templateId: p.template_id || p.templateId || 'tpl-1',
     createdAt: p.created_at || p.createdAt || new Date().toISOString(),
