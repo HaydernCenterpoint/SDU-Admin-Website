@@ -36,7 +36,7 @@ REM 3. Backend: install + prisma + build
 echo [3/6] Backend install + prisma...
 REM Kill backend truoc de giai phong file Prisma DLL (EPERM fix)
 echo Giai phong file Prisma DLL...
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":4000" 2^>nul') do taskkill /PID %%a /F >nul 2>&1
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":4000"') do taskkill /PID %%a /F >nul 2>&1
 schtasks /End /TN "SDU-Backend" >nul 2>&1
 timeout /t 2 /nobreak >nul
 REM Xoa lock cu neu con, ngu C:\Users\Administrator
