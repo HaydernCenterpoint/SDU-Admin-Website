@@ -1,0 +1,80 @@
+﻿# docker-compose.prod.yml — optimized for 2GB RAM / 1 CPU VM
+# Usage: docker compose -f docker-compose.prod.yml up -d --build
+# Saves ~400MB vs docker-compose.nest.yml by serving frontend via nginx (no Vite dev server)
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: sdu-mysql
+    restart: unless-stopped
+    # --- 2GB tuning: limit MySQL to 256MB buffer pool ---
+    command: >
+      --innodb-buffer-pool-size=256M
+      --innodb-log-file-size=32M
+      --innodb-flush-log-at-trx-commit=2
+      --performance-schema=OFF
+      --skip-name-resolve
+      --max-connections=50
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-password}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-sdu_admin}
+    ports:
+      - "127.0.0.1:3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-password}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    mem_limit: 700m
+    mem_reservation: 400m
+    cpus: 0.6
+
+  backend:
+    build: ./backend-nest
+    container_name: sdu-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "mysql://root:${MYSQL_ROOT_PASSWORD:-password}@mysql:3306/${MYSQL_DATABASE:-sdu_admin}"
+      PORT: 4000
+      NODE_ENV: production
+      # backend only needs to allow nginx origin now
+      CORS_ORIGIN: "*"
+      JWT_SECRET: ${JWT_SECRET:-replace-me-with-long-random-secret-min-32-chars}
+      JWT_EXPIRES_IN: "7d"
+      UPLOAD_DIR: /app/uploads
+      MAX_FILE_SIZE_MB: "10"
+      # Node memory limit for 2GB box
+      NODE_OPTIONS: "--max-old-space-size=350"
+    expose:
+      - "4000"
+    volumes:
+      - backend_uploads:/app/uploads
+    mem_limit: 400m
+    mem_reservation: 250m
+    cpus: 0.5
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        VITE_API_URL: /api/trpc
+    container_name: sdu-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    mem_limit: 80m
+    cpus: 0.3
+
+volumes:
+  mysql_data:
+  backend_uploads:
+
