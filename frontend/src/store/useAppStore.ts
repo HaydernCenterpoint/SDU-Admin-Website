@@ -297,40 +297,89 @@ const toNullableInt = (value: unknown): number | null => {
 
 const mapPlanItemPayload = (item: any) => {
   const id = toOptionalInt(item?.id);
-  const expectedResult =
-    item?.expectedResult ??
-    item?.expected_result ??
-    (item?.ket_qua !== undefined || item?.chu_de !== undefined
-      ? JSON.stringify({
-          chu_de: item?.chu_de ?? item?.topic ?? 'N/A',
-          ket_qua: item?.ket_qua ?? '',
-          plannedHours: item?.plannedHours ?? item?.planned_hours ?? 0,
-          ...item,
-        })
-      : null);
+  // PlanEditor stores rich UI row fields inside expected_result JSON (legacy Laravel shape).
+  const uiFields = {
+    tableType: item?.tableType || (item?.type === 'STUDENT' ? 'student' : 'teacher'),
+    tt: item?.tt ?? '',
+    chu_de: item?.chu_de ?? item?.topic ?? '',
+    dia_diem: item?.dia_diem ?? '',
+    ten_thiet_bi: item?.ten_thiet_bi ?? item?.equipmentNameManual ?? item?.equipment_name_manual ?? '',
+    nam_su_dung: item?.nam_su_dung ?? item?.equipmentYearManual ?? item?.equipment_year_manual ?? '',
+    giang_vien: item?.giang_vien ?? '',
+    sinh_vien: item?.sinh_vien ?? '',
+    thoi_gian: item?.thoi_gian ?? item?.timeRange ?? item?.time_range ?? '',
+    ket_qua: item?.ket_qua ?? '',
+    plannedHours: toOptionalInt(item?.plannedHours ?? item?.planned_hours) ?? 0,
+  };
+
+  let expectedResult = item?.expectedResult ?? item?.expected_result ?? null;
+  if (expectedResult && typeof expectedResult === 'object') {
+    expectedResult = JSON.stringify({ ...expectedResult, ...uiFields });
+  } else if (typeof expectedResult === 'string' && expectedResult.trim().startsWith('{')) {
+    try {
+      expectedResult = JSON.stringify({ ...JSON.parse(expectedResult), ...uiFields });
+    } catch {
+      expectedResult = JSON.stringify(uiFields);
+    }
+  } else {
+    expectedResult = JSON.stringify(uiFields);
+  }
 
   return {
     ...(id !== undefined ? { id } : {}),
-    topic: item?.topic || item?.chu_de || 'N/A',
+    topic: uiFields.chu_de || 'N/A',
     locationId: toNullableInt(item?.locationId ?? item?.location_id),
     equipmentId: toNullableInt(item?.equipmentId ?? item?.equipment_id),
-    equipmentNameManual: item?.equipmentNameManual ?? item?.equipment_name_manual ?? item?.ten_thiet_bi ?? null,
-    equipmentYearManual: toOptionalInt(item?.equipmentYearManual ?? item?.equipment_year_manual ?? item?.nam_su_dung) ?? null,
+    equipmentNameManual: uiFields.ten_thiet_bi || null,
+    equipmentYearManual: toOptionalInt(uiFields.nam_su_dung) ?? null,
     executorId: toNullableInt(item?.executorId ?? item?.executor_id),
     mentorId: toNullableInt(item?.mentorId ?? item?.mentor_id),
-    timeRange: item?.timeRange ?? item?.time_range ?? item?.thoi_gian ?? null,
+    timeRange: uiFields.thoi_gian || null,
     expectedResult,
-    plannedHours: toOptionalInt(item?.plannedHours ?? item?.planned_hours) ?? 0,
-    type: item?.type === 'STUDENT' ? 'STUDENT' : 'TEACHER',
+    plannedHours: uiFields.plannedHours,
+    type: item?.type === 'STUDENT' || uiFields.tableType === 'student' ? 'STUDENT' : 'TEACHER',
   };
 };
 
 const mapPlanWeekPayload = (week: any) => {
   const id = toOptionalInt(week?.id);
+  const startLesson = toOptionalInt(week?.startLesson) ?? 1;
+  const endLesson = toOptionalInt(week?.endLesson) ?? startLesson;
+  const date = typeof week?.date === 'string' ? week.date : '';
+  const plannedHours =
+    toOptionalInt(week?.plannedHours ?? week?.planned_hours) ??
+    Math.max(1, endLesson - startLesson + 1);
+
+  // PlanEditor encodes date/start/end lesson into week_label JSON.
+  let weekLabel = week?.weekLabel ?? week?.week_label;
+  if (weekLabel && typeof weekLabel === 'object') {
+    weekLabel = JSON.stringify({
+      ...weekLabel,
+      date,
+      startLesson,
+      endLesson,
+      plannedHours,
+    });
+  } else if (typeof weekLabel === 'string' && weekLabel.trim().startsWith('{')) {
+    try {
+      weekLabel = JSON.stringify({
+        ...JSON.parse(weekLabel),
+        date,
+        startLesson,
+        endLesson,
+        plannedHours,
+      });
+    } catch {
+      weekLabel = JSON.stringify({ date, startLesson, endLesson, plannedHours });
+    }
+  } else {
+    weekLabel = JSON.stringify({ date, startLesson, endLesson, plannedHours });
+  }
+
   return {
     ...(id !== undefined ? { id } : {}),
-    weekLabel: week?.weekLabel || week?.week_label || 'Tuan',
-    plannedHours: toOptionalInt(week?.plannedHours ?? week?.planned_hours) ?? 0,
+    weekLabel,
+    plannedHours,
     actualHours: toOptionalInt(week?.actualHours ?? week?.actual_hours) ?? null,
     status: week?.status || week?.weekStatus || 'PENDING',
     busyNote: week?.busyNote ?? week?.busy_note ?? null,
@@ -412,8 +461,11 @@ const mapPlan = (p: any): Plan => {
         ...w,
         ...parsed,
         weekLabel: w.week_label ?? w.weekLabel,
-        plannedHours: w.planned_hours ?? w.plannedHours ?? parsed.plannedHours,
-        actualHours: w.actual_hours ?? w.actualHours ?? parsed.actualHours,
+        date: parsed.date ?? w.date ?? '',
+        startLesson: parsed.startLesson ?? w.startLesson ?? 1,
+        endLesson: parsed.endLesson ?? w.endLesson ?? parsed.startLesson ?? w.startLesson ?? 1,
+        plannedHours: w.planned_hours ?? w.plannedHours ?? parsed.plannedHours ?? 0,
+        actualHours: w.actual_hours ?? w.actualHours ?? parsed.actualHours ?? 0,
         busyNote: w.busy_note ?? w.busyNote ?? parsed.busyNote ?? null,
         weekStatus: w.status ?? w.weekStatus ?? 'PENDING',
         rescheduleDate: w.reschedule_date ?? w.rescheduleDate ?? null,
