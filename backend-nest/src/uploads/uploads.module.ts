@@ -5,18 +5,29 @@ import * as multer from 'multer';
 import * as path from 'path';
 import * as fs from 'fs';
 
-const uploadDir = process.env.UPLOAD_DIR || './uploads';
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+const uploadDir = path.resolve(process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads'));
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
 @Module({
   imports: [
     MulterModule.register({
       storage: multer.diskStorage({
-        destination: (_req, _file, cb) => cb(null, uploadDir),
+        destination: (_req, _file, cb) => {
+          try {
+            if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+            cb(null, uploadDir);
+          } catch (err: any) {
+            cb(err, uploadDir);
+          }
+        },
         filename: (_req, file, cb) => {
           const ts = Date.now();
-          const safe = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
-          cb(null, `${ts}-${safe}`);
+          const safe = Buffer.from(file.originalname, 'utf8')
+            .toString('utf8')
+            .replace(/[^a-zA-Z0-9._-]/g, '_');
+          cb(null, `${ts}-${safe || 'file'}`);
         },
       }),
       limits: {

@@ -32,12 +32,20 @@ async function bootstrap() {
   app.useStaticAssets(path.resolve(uploadDir), { prefix: '/api/uploads/' });
 
   // CORS
-  const origins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+  // Supports:
+  // - CORS_ORIGIN=*
+  // - CORS_ORIGIN=https://a.com,https://b.com
+  const rawOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173,http://localhost:3000,https://thietbidaihocsaodo.vercel.app')
     .split(',')
-    .map((s) => s.trim());
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const allowAll = rawOrigins.includes('*');
   app.use(
     cors({
-      origin: origins,
+      origin: (origin, cb) => {
+        if (!origin || allowAll || rawOrigins.includes(origin)) return cb(null, true);
+        return cb(null, false);
+      },
       credentials: true,
       exposedHeaders: ['Content-Disposition'],
     }),
@@ -62,7 +70,7 @@ async function bootstrap() {
   logger.log(`🚀 Server ready at http://localhost:${port}/api`);
   logger.log(`📡 tRPC endpoint: http://localhost:${port}/api/trpc`);
   logger.log(`📂 Uploads served from: /api/uploads/*`);
-  logger.log(`🔒 CORS allowed: ${origins.join(', ')}`);
+  logger.log(`CORS allowed: ${allowAll ? '*' : rawOrigins.join(', ')}`);
   logger.log(`📦 Max upload size: ${maxFileSizeMb}MB`);
 }
 
