@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, BadRequestException } from '@nestjs/common';
 import { UploadsController } from './uploads.controller';
 import { MulterModule } from '@nestjs/platform-express';
 import { JwtModule } from '@nestjs/jwt';
@@ -39,6 +39,15 @@ if (!fs.existsSync(uploadDir)) {
       }),
       limits: {
         fileSize: (parseInt(process.env.MAX_FILE_SIZE_MB || '10', 10)) * 1024 * 1024,
+      },
+      fileFilter: (_req, file, cb) => {
+        // Chỉ cho phép PDF / DOCX / XLSX / PPTX (ponytail: block ở trust boundary, không thêm lib)
+        const ext = (file.originalname.split('.').pop() || '').toLowerCase();
+        const allowed = ['pdf', 'docx', 'xlsx', 'pptx', 'xls', 'doc', 'ppt'];
+        // xls/doc/ppt là legacy của xlsx/docx/pptx — vẫn chấp nhận để không gãy file cũ
+        const ok = allowed.includes(ext);
+        if (!ok) return cb(new BadRequestException(`Định dạng .${ext || '?'} không được phép. Chỉ chấp nhận PDF, DOCX, EXCEL (XLS/XLSX), PPTX.` ) as any, false);
+        cb(null, true);
       },
     }),
   ],

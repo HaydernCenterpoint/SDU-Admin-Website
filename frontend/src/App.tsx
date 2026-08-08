@@ -90,7 +90,7 @@ function App() {
                 className="w-full max-w-7xl h-full max-h-[90vh] overflow-hidden"
               >
                 <div className="bg-white rounded-[2.5rem] h-full shadow-2xl flex flex-col">
-                  <PlanEditor plan={selectedPlan} onClose={() => setSelectedPlan(null)} />
+                  <PlanEditor key={selectedPlan.id} plan={selectedPlan} onClose={() => setSelectedPlan(null)} />
                 </div>
               </motion.div>
             </div>

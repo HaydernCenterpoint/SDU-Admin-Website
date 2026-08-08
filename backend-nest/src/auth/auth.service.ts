@@ -57,7 +57,8 @@ export class AuthService {
               orderBy: { id: 'desc' },
               select: { email: true },
             });
-            const maxNum = max ? parseInt(max.email, 10) : 0;
+            const parsed = parseInt(max?.email ?? '', 10);
+            const maxNum = Number.isFinite(parsed) ? parsed : 1000000;
             return String(Math.max(maxNum, 1000000) + 1);
           });
           break;
@@ -98,7 +99,8 @@ export class AuthService {
       orderBy: { id: 'desc' },
       select: { email: true },
     });
-    const maxNum = last ? parseInt(last.email, 10) : 0;
+    const parsed = parseInt(last?.email ?? '', 10);
+    const maxNum = Number.isFinite(parsed) ? parsed : 1000000;
     return String(Math.max(maxNum, 1000000) + 1);
   }
 }

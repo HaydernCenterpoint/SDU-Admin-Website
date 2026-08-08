@@ -726,6 +726,7 @@ const PlanEditor: React.FC<PlanEditorProps> = ({ plan, onClose }) => {
                       <input 
                         type="file" 
                         multiple 
+                        accept=".pdf,.docx,.xlsx,.pptx,.doc,.xls,.ppt"
                         className="hidden" 
                         onChange={(e) => {
                           if (e.target.files) {

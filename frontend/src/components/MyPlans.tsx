@@ -203,7 +203,7 @@ const NewPlanModal = ({ onClose, onCreated }: { onClose: () => void; onCreated: 
             <label className="border-2 border-dashed border-zinc-300 rounded-xl p-6 flex flex-col justify-center items-center text-center bg-zinc-50 hover:bg-zinc-100 transition-colors cursor-pointer relative overflow-hidden group mb-0">
                <input 
                  type="file" 
-                 accept=".doc,.docx,.xls,.xlsx,.pdf" 
+                 accept=".pdf,.docx,.xlsx,.pptx,.doc,.xls,.ppt" 
                  className="absolute inset-0 opacity-0 cursor-pointer h-full w-full" 
                  onChange={(e) => setImportedFile(e.target.files?.[0] || null)} 
                />
@@ -213,7 +213,7 @@ const NewPlanModal = ({ onClose, onCreated }: { onClose: () => void; onCreated: 
                <span className="text-sm font-bold text-zinc-700 truncate max-w-[250px] mb-1">
                  {importedFile ? importedFile.name : 'Tải lên hoặc kéo thả file'}
                </span>
-               {!importedFile && <span className="text-xs text-zinc-500 font-medium">Hỗ trợ .doc, .docx, .xls, .xlsx, .pdf</span>}
+               {!importedFile && <span className="text-xs text-zinc-500 font-medium">Chỉ hỗ trợ PDF, DOCX, EXCEL, PPTX</span>}
             </label>
           </div>
 
