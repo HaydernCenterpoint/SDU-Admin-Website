@@ -52,13 +52,46 @@ export const trpcClient = createTRPCClient<AppRouter>({
   ],
 });
 
-// Set default axios config with transparent tRPC translation adapter
-export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+// Plain REST client for real HTTP calls (uploads/assets). Never attach the tRPC adapter here.
+const restBaseURL = (() => {
+  const apiUrl = import.meta.env.VITE_API_URL as string | undefined;
+  if (!apiUrl) return '/api';
+  // If VITE_API_URL points at tRPC, strip the suffix so REST still hits /api/*
+  return apiUrl.replace(/\/trpc\/?$/, '');
+})();
+
+export const restApi = axios.create({
+  baseURL: restBaseURL,
   timeout: 15000,
 });
 
-const defaultAdapter = api.defaults.adapter;
+// Set default axios config with transparent tRPC translation adapter
+export const api = axios.create({
+  baseURL: restBaseURL,
+  timeout: 15000,
+});
+
+// Real HTTP transport for uploads. Prefer Axios getAdapter; otherwise
+// delegate to restApi (which never installs the tRPC translation adapter).
+const httpAdapter = ((config: any) => {
+  const axiosAny = axios as any;
+  if (typeof axiosAny.getAdapter === 'function') {
+    try {
+      const adapter = axiosAny.getAdapter(axiosAny.defaults?.adapter || ['xhr', 'http', 'fetch']);
+      if (typeof adapter === 'function') return adapter(config);
+    } catch {
+      // fall through to restApi
+    }
+  }
+  const { adapter: _ignored, ...rest } = config || {};
+  return restApi.request(rest);
+}) as any;
+
+const isUploadRequest = (url: string) =>
+  url === '/uploads' ||
+  url.startsWith('/uploads') ||
+  url.startsWith('/api/uploads') ||
+  url.includes('/uploads');
 
 api.defaults.adapter = async (config) => {
   const url = config.url || '';
@@ -71,8 +104,8 @@ api.defaults.adapter = async (config) => {
   }
 
   // Keep file uploads and standard assets as REST
-  if (url === '/uploads' || url.startsWith('/uploads') || url.startsWith('/api/uploads') || url.includes('uploads')) {
-    return (defaultAdapter as any)(config);
+  if (isUploadRequest(url)) {
+    return httpAdapter(config);
   }
 
   let trpcResponse: any;
@@ -118,12 +151,11 @@ api.defaults.adapter = async (config) => {
       trpcResponse = await trpcClient.users.updateProfile.mutate(data);
     } else if (url === '/users/avatar' && method === 'post') {
       // 1. Upload avatar file
-      const uploadRes = await axios.post('/api/uploads', data, {
-        adapter: defaultAdapter,
+      const uploadRes = await restApi.post('/uploads', data, {
+        adapter: httpAdapter,
         headers: {
-          'Content-Type': 'multipart/form-data',
           Authorization: `Bearer ${localStorage.getItem('token')}`,
-        }
+        },
       });
       // 2. Call tRPC mutation
       trpcResponse = await trpcClient.users.updateAvatar.mutate({ avatar: uploadRes.data.path });
@@ -140,12 +172,11 @@ api.defaults.adapter = async (config) => {
         for (const file of files) {
           const formData = new FormData();
           formData.append('file', file);
-          const uploadRes = await axios.post('/api/uploads', formData, {
-            adapter: defaultAdapter,
+          const uploadRes = await restApi.post('/uploads', formData, {
+            adapter: httpAdapter,
             headers: {
-              'Content-Type': 'multipart/form-data',
               Authorization: `Bearer ${localStorage.getItem('token')}`,
-            }
+            },
           });
           newAttachments.push({
             name: uploadRes.data.name,
@@ -171,12 +202,11 @@ api.defaults.adapter = async (config) => {
         for (const file of files) {
           const formData = new FormData();
           formData.append('file', file);
-          const uploadRes = await axios.post('/api/uploads', formData, {
-            adapter: defaultAdapter,
+          const uploadRes = await restApi.post('/uploads', formData, {
+            adapter: httpAdapter,
             headers: {
-              'Content-Type': 'multipart/form-data',
               Authorization: `Bearer ${localStorage.getItem('token')}`,
-            }
+            },
           });
           newAttachments.push({
             name: uploadRes.data.name,
@@ -225,7 +255,7 @@ api.defaults.adapter = async (config) => {
       const id = parseInt(url.match(/^\/plans\/(\d+)\/bulk-complete$/)![1], 10);
       trpcResponse = await trpcClient.plans.bulkComplete.mutate({ id, comment: data.comment });
     } else {
-      return (defaultAdapter as any)(config);
+      return httpAdapter(config);
     }
 
     return {
@@ -382,9 +412,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (token) {
       localStorage.setItem('token', token);
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      restApi.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     } else {
       localStorage.removeItem('token');
       delete api.defaults.headers.common['Authorization'];
+      delete restApi.defaults.headers.common['Authorization'];
     }
     set({ token });
   },
@@ -417,6 +449,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { token } = get();
     if (token) {
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      restApi.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       try {
         const user = await trpcClient.auth.me.query();
         set({ currentUser: mapUser(user) });
@@ -509,9 +542,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         for (const file of newPlan.newAttachments) {
           const formData = new FormData();
           formData.append('file', file);
-          const uploadRes = await api.post('/uploads', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-          });
+          const uploadRes = await restApi.post('/uploads', formData);
           newAttachments.push({
             name: uploadRes.data.name,
             path: uploadRes.data.path,
@@ -520,9 +551,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       } else if (newPlan.attachedFile) {
         const formData = new FormData();
         formData.append('file', newPlan.attachedFile);
-        const uploadRes = await api.post('/uploads', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        const uploadRes = await restApi.post('/uploads', formData);
         newAttachments.push({
           name: uploadRes.data.name,
           path: uploadRes.data.path,
@@ -569,9 +598,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         for (const file of payload.newAttachments) {
           const formData = new FormData();
           formData.append('file', file);
-          const uploadRes = await api.post('/uploads', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-          });
+          const uploadRes = await restApi.post('/uploads', formData);
           newAttachments.push({
             name: uploadRes.data.name,
             path: uploadRes.data.path,
