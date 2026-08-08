@@ -371,7 +371,7 @@ const NewDeptModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
 
 // ---- Main Component ----
 const MyPlans = ({ onSelectPlan }: { onSelectPlan: (plan: Plan) => void }) => {
-  const { currentUser, updatePlanStatus, deletePlan, plans, tableTemplates } = useAppStore();
+  const { currentUser, createPlan, updatePlanStatus, deletePlan, plans, tableTemplates } = useAppStore();
   
   const getPlanTemplate = (plan: any) => {
     return tableTemplates.find(t => t.id === plan.templateId) || tableTemplates[0];
@@ -380,6 +380,48 @@ const MyPlans = ({ onSelectPlan }: { onSelectPlan: (plan: Plan) => void }) => {
   const [showNewModal, setShowNewModal] = useState(false);
   const [showNewDeptModal, setShowNewDeptModal] = useState(false);
   const [planToDelete, setPlanToDelete] = useState<Plan | null>(null);
+  const [creatingPlan, setCreatingPlan] = useState(false);
+
+  const handleCreateNewPlan = async () => {
+    if (!currentUser || creatingPlan) return;
+
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const year = now.getFullYear();
+
+    // If teacher already has a plan for this month, open it instead of duplicating.
+    const existing = plans.find(
+      (p) =>
+        (p.teacherId === currentUser.id || (p as any).user_id === currentUser.id) &&
+        Number(p.month) === month &&
+        Number(p.year) === year,
+    );
+    if (existing) {
+      onSelectPlan(existing);
+      return;
+    }
+
+    setCreatingPlan(true);
+    try {
+      const created = await createPlan({
+        title: `Kế hoạch công tác tháng ${month}/${year}`,
+        month,
+        year,
+        teacherId: currentUser.id,
+        teacherName: currentUser.name,
+        departmentId: currentUser.departmentId,
+        status: 'DRAFT',
+        items: [],
+        weeks: [],
+      });
+      onSelectPlan(created);
+    } catch (err: any) {
+      alert(err?.message || 'Không tạo được kế hoạch mới. Vui lòng thử lại.');
+    } finally {
+      setCreatingPlan(false);
+    }
+  };
+
   const [filterMonth, setFilterMonth] = useState('ALL');
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [filterDept, setFilterDept] = useState('ALL');
@@ -547,11 +589,12 @@ const MyPlans = ({ onSelectPlan }: { onSelectPlan: (plan: Plan) => void }) => {
         </div>
         {currentUser?.role === 'TEACHER' && (
           <button
-            onClick={() => setShowNewModal(true)}
-            className="btn-primary"
+            onClick={handleCreateNewPlan}
+            disabled={creatingPlan}
+            className="btn-primary disabled:opacity-60"
           >
             <Plus size={16} />
-            Lập kế hoạch mới
+            {creatingPlan ? 'Đang mở form...' : 'Lập kế hoạch mới'}
           </button>
         )}
         {currentUser?.role === 'DEPT_HEAD' && (

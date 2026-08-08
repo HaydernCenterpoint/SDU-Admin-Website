@@ -282,7 +282,7 @@ const PlanEditor: React.FC<PlanEditorProps> = ({ plan, onClose }) => {
 
   const [weeks, setWeeks] = useState<any[]>(() => {
     if (plan.weeks && plan.weeks.length > 0) return plan.weeks;
-    return [{ id: 'w' + Math.random().toString(36).substr(2, 6), date: '', startLesson: 1, endLesson: 1, plannedHours: 1, weekLabel: '' }];
+    return [{ id: 'w' + Math.random().toString(36).substr(2, 6), date: '', startLesson: 1, endLesson: 3, plannedHours: 3, weekLabel: '' }];
   });
 
   const role = currentUser?.role;
