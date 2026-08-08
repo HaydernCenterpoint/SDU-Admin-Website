@@ -10,6 +10,9 @@ interface CustomDatePickerProps {
   placeholder?: string;
   minWidth?: string;
   hideFooter?: boolean;
+  /** 1-12. When set with allowedYear, only days in that month are selectable. */
+  allowedMonth?: number;
+  allowedYear?: number;
 }
 
 const MONTH_NAMES = [
@@ -26,6 +29,8 @@ const CustomDatePicker = ({
   placeholder,
   minWidth,
   hideFooter = false,
+  allowedMonth,
+  allowedYear,
 }: CustomDatePickerProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const selectedDates = value
@@ -33,7 +38,11 @@ const CustomDatePicker = ({
     : [];
 
   const [currentDate, setCurrentDate] = useState(() => {
-    if (selectedDates.length > 0) return new Date(selectedDates[0]);
+    if (selectedDates.length > 0) {
+      const parts = selectedDates[0].split('-').map(Number);
+      if (parts.length >= 3) return new Date(parts[0], parts[1] - 1, parts[2]);
+    }
+    if (allowedYear && allowedMonth) return new Date(allowedYear, allowedMonth - 1, 1);
     return new Date();
   });
 
@@ -150,8 +159,9 @@ const CustomDatePicker = ({
               <div className="flex items-center justify-between mb-4">
                 <button
                   type="button"
+                  disabled={!!allowedMonth && !!allowedYear}
                   onClick={() => setCurrentDate(new Date(year, month - 1, 1))}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <ChevronLeft size={16} strokeWidth={2.5} />
                 </button>
@@ -159,8 +169,9 @@ const CustomDatePicker = ({
                 <div className="flex items-center gap-1">
                   <select
                     value={month}
+                    disabled={!!allowedMonth && !!allowedYear}
                     onChange={(e) => setCurrentDate(new Date(year, parseInt(e.target.value), 1))}
-                    className="text-sm font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border-none outline-none px-2 py-1 rounded-lg cursor-pointer transition-colors appearance-none text-center"
+                    className="text-sm font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border-none outline-none px-2 py-1 rounded-lg cursor-pointer transition-colors appearance-none text-center disabled:opacity-60"
                   >
                     {Array.from({ length: 12 }).map((_, i) => (
                       <option key={i} value={i}>{MONTH_NAMES[i]}</option>
@@ -168,8 +179,9 @@ const CustomDatePicker = ({
                   </select>
                   <select
                     value={year}
+                    disabled={!!allowedMonth && !!allowedYear}
                     onChange={(e) => setCurrentDate(new Date(parseInt(e.target.value), month, 1))}
-                    className="text-sm font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border-none outline-none px-2 py-1 rounded-lg cursor-pointer transition-colors appearance-none text-center"
+                    className="text-sm font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border-none outline-none px-2 py-1 rounded-lg cursor-pointer transition-colors appearance-none text-center disabled:opacity-60"
                   >
                     {Array.from({ length: 10 }).map((_, i) => {
                       const y = new Date().getFullYear() - 2 + i;
@@ -180,12 +192,19 @@ const CustomDatePicker = ({
 
                 <button
                   type="button"
+                  disabled={!!allowedMonth && !!allowedYear}
                   onClick={() => setCurrentDate(new Date(year, month + 1, 1))}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <ChevronRight size={16} strokeWidth={2.5} />
                 </button>
               </div>
+
+              {mode === 'multiple' && (
+                <div className="mb-2 text-[11px] font-semibold text-slate-500 text-center">
+                  Chọn nhiều ngày: bấm từng ngày để chọn/bỏ chọn
+                </div>
+              )}
 
               {/* Day-of-week headers */}
               <div className="grid grid-cols-7 gap-0.5 mb-2">
@@ -203,20 +222,28 @@ const CustomDatePicker = ({
                   const dateStr = dateToStr(year, month, d);
                   const isSelected = selectedDates.includes(dateStr);
                   const isToday = dateStr === todayStr;
+                  const outOfAllowedMonth =
+                    !!allowedYear &&
+                    !!allowedMonth &&
+                    (year !== allowedYear || month + 1 !== allowedMonth);
+                  const dayDisabled = disabled || outOfAllowedMonth;
 
                   return (
                     <button
                       type="button"
                       key={i}
-                      onClick={() => { if (!disabled) handleSelect(d); }}
+                      onClick={() => { if (!dayDisabled) handleSelect(d); }}
+                      title={outOfAllowedMonth ? 'Chỉ chọn ngày trong tháng của kế hoạch' : (mode === 'multiple' ? 'Bấm để chọn/bỏ chọn nhiều ngày' : undefined)}
                       className={`
                         h-9 w-full rounded-xl text-sm font-bold flex items-center justify-center
                         transition-all duration-150 focus:outline-none select-none
                         ${isSelected
                           ? 'bg-[#CC0000] text-white shadow-md shadow-red-500/25 scale-[1.05]'
+                          : outOfAllowedMonth
+                            ? 'text-slate-300 bg-slate-50 cursor-not-allowed'
                           : isToday
                             ? 'bg-red-50 text-[#CC0000] border border-red-200 hover:bg-red-100'
-                            : `text-slate-700 ${!disabled ? 'hover:bg-slate-100 hover:text-slate-900' : 'opacity-60 cursor-default'}`
+                            : `text-slate-700 ${!dayDisabled ? 'hover:bg-slate-100 hover:text-slate-900' : 'opacity-60 cursor-default'}`
                         }
                       `}
                     >
@@ -241,8 +268,17 @@ const CustomDatePicker = ({
                   <button
                     type="button"
                     onClick={() => {
-                      setCurrentDate(today);
+                      if (allowedYear && allowedMonth) {
+                        setCurrentDate(new Date(allowedYear, allowedMonth - 1, 1));
+                      } else {
+                        setCurrentDate(today);
+                      }
                       if (!disabled) {
+                        const todayAllowed =
+                          !allowedYear ||
+                          !allowedMonth ||
+                          (today.getFullYear() === allowedYear && today.getMonth() + 1 === allowedMonth);
+                        if (!todayAllowed) return;
                         if (mode === 'single') { onChange(todayStr); setIsOpen(false); }
                         else if (!selectedDates.includes(todayStr)) {
                           onChange([...selectedDates, todayStr].sort().join(', '));

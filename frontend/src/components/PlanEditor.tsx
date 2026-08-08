@@ -25,6 +25,7 @@ import { Plan, useAppStore } from '../store/useAppStore';
 import AuditTimeline from './AuditTimeline';
 import FilePreview, { getFileType, fileTypeLabel, FileIcon } from './FilePreview';
 import { TemplateManagerModal } from './TemplateManagerModal';
+import SharedCustomDatePicker from './CustomDatePicker';
 
 interface PlanEditorProps {
   plan: Plan;
@@ -38,174 +39,6 @@ const ACTION_LABELS: Record<string, string> = {
   DEPT_REJECTED_PHASE1: 'Trưởng khoa từ chối',
   ACCEPTED_TO_BGH: 'Ban Giám Hiệu đã phê duyệt',
   DEPT_REJECTED_PHASE2: 'Ban Giám Hiệu từ chối',
-};
-
-const CustomDatePicker = ({ value, onChange, disabled }: { value: string, onChange: (date: string) => void, disabled?: boolean }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const selectedDates = value ? value.split(',').map(d => d.trim()).filter(Boolean) : [];
-
-  // Parse dates as local time to avoid timezone shift
-  const parseLocalDate = (dateStr: string): Date => {
-    const parts = dateStr.split('-');
-    return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-  };
-
-  const [currentDate, setCurrentDate] = useState(() => {
-    if (selectedDates.length > 0) {
-      return parseLocalDate(selectedDates[0]);
-    }
-    return new Date();
-  });
-
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    if (isOpen) document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen]);
-
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
-
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const firstDay = new Date(year, month, 1).getDay();
-  const startOffset = firstDay === 0 ? 6 : firstDay - 1;
-
-  const days = [];
-  for (let i = 0; i < startOffset; i++) days.push(null);
-  for (let i = 1; i <= daysInMonth; i++) days.push(i);
-
-  const dateToStr = (y: number, m: number, d: number) =>
-    `${y}-${String(m+1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-
-  const handleSelect = (day: number) => {
-    if (!day) return;
-    const dateStr = dateToStr(year, month, day);
-    if (selectedDates.includes(dateStr)) {
-      onChange(selectedDates.filter(d => d !== dateStr).join(', '));
-    } else {
-      onChange([...selectedDates, dateStr].sort().join(', '));
-    }
-  };
-
-  const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
-  const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
-
-  // Use local time for "today" comparison
-  const now = new Date();
-  const todayYear = now.getFullYear();
-  const todayMonth = now.getMonth(); // 0-11
-  const todayDate = now.getDate();
-
-  let displayValue = 'Chọn ngày...';
-  if (selectedDates.length === 1) {
-    const d = parseLocalDate(selectedDates[0]);
-    displayValue = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
-  } else if (selectedDates.length > 1) {
-    displayValue = `${selectedDates.length} ngày đã chọn`;
-  }
-
-  return (
-    <div
-      className="relative"
-      ref={containerRef}
-      onMouseEnter={() => setIsOpen(true)}
-      onMouseLeave={() => setIsOpen(false)}
-    >
-      <div
-        onClick={() => setIsOpen(!isOpen)}
-        className={`w-full text-sm font-bold px-3 py-[9px] rounded-lg border ${isOpen ? 'border-primary ring-2 ring-primary/20 bg-red-50/10' : 'border-zinc-300'} bg-white flex justify-between items-center transition-colors ${disabled ? 'opacity-90 bg-zinc-50 cursor-pointer' : 'cursor-pointer hover:bg-zinc-50'}`}
-      >
-        <span className="truncate">{displayValue}</span>
-        <Calendar size={16} className="text-zinc-400 shrink-0 ml-2" />
-      </div>
-
-      {isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 p-4 bg-white rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.2)] border border-zinc-100 z-[100] w-[320px]">
-          <div className="flex justify-between items-center mb-4">
-              <button type="button" onClick={prevMonth} className="p-1.5 hover:bg-zinc-100 rounded-lg text-zinc-600 transition-colors"><ChevronLeft size={18} /></button>
-              <div className="font-bold text-navy">Tháng {month + 1} năm {year}</div>
-              <button type="button" onClick={nextMonth} className="p-1.5 hover:bg-zinc-100 rounded-lg text-zinc-600 transition-colors"><ChevronLeft size={18} className="rotate-180" /></button>
-            </div>
-            <div className="grid grid-cols-7 gap-1 text-center mb-2">
-              {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map(d => (
-                <div key={d} className="text-[11px] font-black text-zinc-400 select-none">{d}</div>
-              ))}
-            </div>
-            <div className="grid grid-cols-7 gap-1">
-              {days.map((d, i) => {
-                if (!d) return <div key={i} className="h-8 select-none" />;
-                const dateStr = dateToStr(year, month, d);
-                const isSelected = selectedDates.includes(dateStr);
-                const isToday = todayYear === year && todayMonth === month && todayDate === d;
-
-                let isRestricted = false;
-                // Determine if current displayed month is "current or future" vs "past"
-                const cellDate = new Date(year, month, d);
-                const todayStart = new Date(todayYear, todayMonth, todayDate);
-
-                // Past months: restrict all dates (not selectable at all)
-                const isPastMonth = (year < todayYear) || (year === todayYear && month < todayMonth);
-                // Current month: restrict dates < today (already passed)
-                const isPastDateInCurrentMonth = (year === todayYear && month === todayMonth && d < todayDate);
-                // Current month: restrict days 1-5
-                const isFirstFiveDays = (year === todayYear && month === todayMonth && d <= 5);
-
-                if (isPastMonth) {
-                  isRestricted = true; // Past months not selectable
-                } else if (year === todayYear && month === todayMonth) {
-                  // Current month: only restrict past dates and days 1-5
-                  if (isPastDateInCurrentMonth) isRestricted = true;
-                  if (isFirstFiveDays) isRestricted = true;
-                }
-                // Future months: all dates selectable (no restriction)
-                const isDisabled = disabled || isRestricted;
-
-                return (
-                  <button
-                    type="button"
-                    key={i}
-                    onClick={() => { if (!isDisabled) handleSelect(d); }}
-                    className={`h-8 rounded-lg text-sm font-bold flex items-center justify-center transition-all focus:outline-none
-                      ${isSelected ? 'bg-primary text-white shadow-md shadow-primary/20 scale-105' :
-                        isToday ? `bg-red-50 text-primary border border-red-200 ${!isDisabled ? 'hover:bg-red-100' : ''}` :
-                        isRestricted ? 'text-zinc-300 bg-zinc-50 line-through' : `text-zinc-700 ${!isDisabled ? 'hover:bg-zinc-100' : ''}`}
-                      ${isDisabled ? 'cursor-not-allowed opacity-60' : ''}`}
-                    title={isRestricted ? (isPastMonth ? "Không thể chọn tháng trong quá khứ" : "Ngày đã qua hoặc trước ngày 05 của tháng hiện tại") : ""}
-                  >
-                    {d}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="mt-4 pt-3 border-t border-zinc-100 flex justify-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setCurrentDate(new Date(todayYear, todayMonth, todayDate));
-                  const todayStr = dateToStr(todayYear, todayMonth, todayDate);
-                  // Check if today is restricted (past date or within first 5 days)
-                  const todayRestricted = (todayDate <= 5) || selectedDates.includes(todayStr);
-                  if (!disabled && !todayRestricted) {
-                    if (!selectedDates.includes(todayStr)) {
-                      onChange([...selectedDates, todayStr].sort().join(', '));
-                    }
-                  }
-                }}
-                className={`text-xs font-bold transition-colors ${disabled ? 'text-zinc-400 cursor-default' : 'text-primary hover:underline'}`}
-              >
-                Hôm nay
-              </button>
-            </div>
-          </div>
-      )}
-    </div>
-  );
 };
 
 const PlanEditor: React.FC<PlanEditorProps> = ({ plan, onClose }) => {
@@ -721,10 +554,27 @@ const PlanEditor: React.FC<PlanEditorProps> = ({ plan, onClose }) => {
                     <div key={week.id} className="flex flex-wrap md:flex-nowrap items-end gap-3 border border-zinc-200 p-3 rounded-lg bg-zinc-50 hover:border-zinc-300 transition-colors">
                       <div className="flex-1 min-w-[150px]">
                         <span className="text-[10px] font-black text-zinc-500 uppercase block mb-1">Ngày thực hiện</span>
-                        <CustomDatePicker
+                        <SharedCustomDatePicker
+                          mode="multiple"
                           disabled={!isEditable}
+                          allowedMonth={Number(plan.month)}
+                          allowedYear={Number(plan.year)}
                           value={week.date || ''}
-                          onChange={dateStr => updateWeek(week.id, 'date', dateStr)}
+                          onChange={dateStr => {
+                            // Keep only dates belonging to this plan month/year.
+                            const allowed = (dateStr || '')
+                              .split(',')
+                              .map((d) => d.trim())
+                              .filter(Boolean)
+                              .filter((d) => {
+                                const [y, m] = d.split('-').map(Number);
+                                return y === Number(plan.year) && m === Number(plan.month);
+                              })
+                              .sort()
+                              .join(', ');
+                            updateWeek(week.id, 'date', allowed);
+                          }}
+                          placeholder="Chọn ngày trong tháng..."
                         />
                       </div>
                       <div className="w-[120px]">
