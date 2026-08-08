@@ -16,6 +16,7 @@ export const UserStatusEnum = z.enum(['PENDING', 'ACTIVE', 'REJECTED']);
 export const GenderEnum = z.enum(['Nam', 'Nu', 'Khac']);
 export const PlanStatusEnum = z.enum([
   'DRAFT',
+  'SUBMITTED',
   'DEPT_APPROVED_TO_BGH',
   'DEPT_REJECTED_PHASE1',
   'DEPT_REJECTED_PHASE2',
