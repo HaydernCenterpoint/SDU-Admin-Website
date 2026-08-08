@@ -413,7 +413,7 @@ interface AppState {
   // API Actions
   fetchPlans: () => Promise<void>;
   updatePlanStatus: (planId: string, status: PlanStatus, comment?: string) => Promise<void>;
-  createPlan: (plan: Partial<Plan> & Record<string, any>) => Promise<void>;
+  createPlan: (plan: Partial<Plan> & Record<string, any>) => Promise<Plan>;
   updatePlan: (planId: string, payload: Partial<Plan> & Record<string, any>) => Promise<void>;
   deletePlan: (planId: string) => Promise<void>;
   api: import('axios').AxiosInstance;
@@ -679,7 +679,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       };
 
       const response = await trpcClient.plans.create.mutate(payload as any);
-      set((state) => ({ plans: [mapPlan(response), ...state.plans] }));
+      const createdPlan = mapPlan(response);
+      set((state) => ({ plans: [createdPlan, ...state.plans] }));
+      return createdPlan;
     } catch (error) {
       console.error('Failed to create plan on server:', error);
       throw error;

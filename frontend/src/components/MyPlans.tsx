@@ -34,8 +34,6 @@ const NewPlanModal = ({ onClose, onCreated }: { onClose: () => void; onCreated: 
   const [importedFile, setImportedFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [weeks, setWeeks] = useState([0, 0, 0, 0, 0]);
-  
   const currentDate = new Date();
   const [planMonth, setPlanMonth] = useState(currentDate.getMonth() + 1);
   const [planYear, setPlanYear] = useState(currentDate.getFullYear());
@@ -110,7 +108,7 @@ const NewPlanModal = ({ onClose, onCreated }: { onClose: () => void; onCreated: 
       }
 
       const attachedFileName = importedFile ? importedFile.name : undefined;
-      await createPlan({
+      const created = await createPlan({
         title: title.trim(),
         month,
         year,
@@ -123,9 +121,7 @@ const NewPlanModal = ({ onClose, onCreated }: { onClose: () => void; onCreated: 
         items,
         weeks: [],
       });
-
-      const newPlan = useAppStore.getState().plans[0];
-      onCreated(newPlan);
+      onCreated(created);
     } catch (err: any) {
       setError(err?.message || 'Không tạo được kế hoạch. Vui lòng thử lại.');
       return;
@@ -202,28 +198,6 @@ const NewPlanModal = ({ onClose, onCreated }: { onClose: () => void; onCreated: 
               </div>
             </div>
           </div>
-          
-          <div className="mt-2">
-            <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">Dự kiến số giờ <span className="text-[10px] text-red-500 normal-case">(Thời gian thực hiện phải sau ngày 05)</span></label>
-            <div className="flex gap-2">
-               {[1, 2, 3, 4, 5].map((w, idx) => (
-                 <div key={w} className="flex-1">
-                    <span className="text-[10px] font-bold text-zinc-400 block mb-1 text-center">T.{w}</span>
-                    <input 
-                      type="number" min="0" 
-                      className="w-full text-center px-1 py-2 border border-zinc-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none"
-                      value={weeks[idx] || ''}
-                      onChange={(e) => {
-                        const newWeeks = [...weeks];
-                        newWeeks[idx] = parseInt(e.target.value) || 0;
-                        setWeeks(newWeeks);
-                      }}
-                    />
-                 </div>
-               ))}
-            </div>
-          </div>
-
           <div className="mt-2">
             <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">Đính kèm tệp Báo cáo/Kế hoạch</label>
             <label className="border-2 border-dashed border-zinc-300 rounded-xl p-6 flex flex-col justify-center items-center text-center bg-zinc-50 hover:bg-zinc-100 transition-colors cursor-pointer relative overflow-hidden group mb-0">
@@ -256,7 +230,7 @@ const NewPlanModal = ({ onClose, onCreated }: { onClose: () => void; onCreated: 
             disabled={!title.trim() || submitting}
             className="flex-1 py-2.5 bg-primary text-white rounded-xl text-sm font-bold shadow-md hover:opacity-90 disabled:opacity-40 transition-all"
           >
-            {submitting ? 'Đang tạo...' : 'Tạo kế hoạch'}
+            {submitting ? 'Đang tạo...' : 'Tiếp tục lập chi tiết'}
           </button>
         </div>
       </motion.div>
