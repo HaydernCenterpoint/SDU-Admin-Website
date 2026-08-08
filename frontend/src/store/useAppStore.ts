@@ -62,7 +62,24 @@ const restBaseURL = (() => {
 
 export const restApi = axios.create({
   baseURL: restBaseURL,
-  timeout: 15000,
+  timeout: 60000,
+});
+
+// Always attach bearer token for REST uploads/assets.
+restApi.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers = config.headers || {};
+    (config.headers as any).Authorization = `Bearer ${token}`;
+  }
+  // Let browser set multipart boundary automatically.
+  if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+    if (config.headers) {
+      delete (config.headers as any)['Content-Type'];
+      delete (config.headers as any)['content-type'];
+    }
+  }
+  return config;
 });
 
 // Set default axios config with transparent tRPC translation adapter

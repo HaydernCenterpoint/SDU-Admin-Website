@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
 import { UploadsController } from './uploads.controller';
 import { MulterModule } from '@nestjs/platform-express';
+import { JwtModule } from '@nestjs/jwt';
+import { PrismaModule } from '../prisma/prisma.module';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import * as multer from 'multer';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -12,6 +15,11 @@ if (!fs.existsSync(uploadDir)) {
 
 @Module({
   imports: [
+    PrismaModule,
+    JwtModule.register({
+      secret: process.env.JWT_SECRET || 'dev-secret-change-me',
+      signOptions: { expiresIn: process.env.JWT_EXPIRES_IN || '7d' },
+    }),
     MulterModule.register({
       storage: multer.diskStorage({
         destination: (_req, _file, cb) => {
@@ -24,9 +32,8 @@ if (!fs.existsSync(uploadDir)) {
         },
         filename: (_req, file, cb) => {
           const ts = Date.now();
-          const safe = Buffer.from(file.originalname, 'utf8')
-            .toString('utf8')
-            .replace(/[^a-zA-Z0-9._-]/g, '_');
+          const original = file.originalname || 'file';
+          const safe = original.replace(/[^a-zA-Z0-9._-]/g, '_');
           cb(null, `${ts}-${safe || 'file'}`);
         },
       }),
@@ -36,5 +43,6 @@ if (!fs.existsSync(uploadDir)) {
     }),
   ],
   controllers: [UploadsController],
+  providers: [JwtAuthGuard],
 })
 export class UploadsModule {}
