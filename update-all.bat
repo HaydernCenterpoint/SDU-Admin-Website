@@ -132,13 +132,14 @@ for /f "tokens=5" %%b in ('netstat -ano ^| findstr ":4000" ^| findstr "LISTENING
     taskkill /PID %%b /F 1>nul 2>&1
   )
 )
+set "TR_CMD=node "%CD%\backend-nest\dist\src\main.js""
 schtasks /Query /TN SDU-Backend 1>nul 2>&1
 if errorlevel 1 (
   echo Tao Scheduled Task SDU-Backend (auto-run on boot)...
-  schtasks /Create /TN SDU-Backend /TR "node \"%CD%\backend-nest\dist\src\main.js\"" /SC ONSTART /RU SYSTEM /RL HIGHEST /F 1>nul 2>&1
+  schtasks /Create /TN SDU-Backend /TR "%TR_CMD%" /SC ONSTART /RU SYSTEM /RL HIGHEST /F 1>nul 2>&1
 ) else (
   echo Cap nhat Task SDU-Backend...
-  schtasks /Change /TN SDU-Backend /TR "node \"%CD%\backend-nest\dist\src\main.js\"" 1>nul 2>&1
+  schtasks /Change /TN SDU-Backend /TR "%TR_CMD%" 1>nul 2>&1
 )
 schtasks /Run /TN SDU-Backend 1>nul 2>&1
 if errorlevel 1 (
