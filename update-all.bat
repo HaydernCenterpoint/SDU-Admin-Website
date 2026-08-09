@@ -76,7 +76,7 @@ if errorlevel 1 (
 for /f "tokens=1 delims=v." %%v in ('node -v') do set NODE_MAJOR=%%v
 set NODE_MAJOR=%NODE_MAJOR:v=%
 if %NODE_MAJOR% LSS 18 (
-  echo [WARN] Node %NODE_MAJOR% qua cu, yeu cau >=18 (khuyen nghi 20 LTS)
+  echo [WARN] Node %NODE_MAJOR% qua cu, yeu cau >=18 - khuyen nghi 20 LTS
 )
 
 REM 3b. .env
@@ -103,7 +103,7 @@ call npx prisma generate
 if errorlevel 1 goto :fail
 call npx prisma migrate deploy
 if errorlevel 1 (
-  echo [WARN] prisma migrate deploy fail - co the MySQL chua chay (XAMPP)
+  echo [WARN] prisma migrate deploy fail - co the MySQL chua chay [XAMPP]
   echo        Mo XAMPP - Start MySQL roi chay lai file nay.
 )
 call npm run build
@@ -135,7 +135,7 @@ for /f "tokens=5" %%b in ('netstat -ano ^| findstr ":4000" ^| findstr "LISTENING
 set "TR_CMD=node "%CD%\backend-nest\dist\src\main.js""
 schtasks /Query /TN SDU-Backend 1>nul 2>&1
 if errorlevel 1 (
-  echo Tao Scheduled Task SDU-Backend (auto-run on boot)...
+  echo Tao Scheduled Task SDU-Backend auto-run on boot...
   schtasks /Create /TN SDU-Backend /TR "%TR_CMD%" /SC ONSTART /RU SYSTEM /RL HIGHEST /F 1>nul 2>&1
 ) else (
   echo Cap nhat Task SDU-Backend...
@@ -143,7 +143,7 @@ if errorlevel 1 (
 )
 schtasks /Run /TN SDU-Backend 1>nul 2>&1
 if errorlevel 1 (
-  echo [WARN] Khong chay duoc Task (can Run as administrator). Chay tam:
+  echo [WARN] Khong chay duoc Task [can Run as administrator]. Chay tam:
   start "" /B node "backend-nest\dist\src\main.js"
 )
 
@@ -154,9 +154,9 @@ netstat -ano | findstr ":4000" | findstr "LISTENING" >nul
 if errorlevel 1 (
   netstat -ano | findstr ":4000"
   if errorlevel 1 (
-    echo [LOI] Chua thay :4000 - xem Task Scheduler (taskschd.msc ^> SDU-Backend)
+    echo [LOI] Chua thay :4000 - xem Task Scheduler [taskschd.msc ^> SDU-Backend]
   ) else (
-    echo [INFO] Co :4000 nhung chua LISTENING (TIME_WAIT) - doi 5s roi thu lai
+    echo [INFO] Co :4000 nhung chua LISTENING [TIME_WAIT] - doi 5s roi thu lai
     timeout /t 5 /nobreak 1>nul 2>&1
     netstat -ano | findstr ":4000"
   )
