@@ -28,7 +28,7 @@ const StatusBadge = ({ status }: { status: string }) => {
 };
 
 // ---- New Plan Modal ----
-const NewPlanModal = ({ onClose, onCreated }: { onClose: () => void; onCreated: (plan: Plan) => void }) => {
+const NewPlanModal = ({ onClose, onCreated, onSelectPlan }: { onClose: () => void; onCreated: (plan: Plan) => void; onSelectPlan: (plan: Plan) => void }) => {
   const { currentUser, createPlan } = useAppStore();
   const [title, setTitle] = useState('');
   const [importedFile, setImportedFile] = useState<File | null>(null);
@@ -85,7 +85,9 @@ const NewPlanModal = ({ onClose, onCreated }: { onClose: () => void; onCreated: 
     }
     */
 
-    const existingPlan = useAppStore.getState().plans.find(p => p.teacherId === currentUser.id && p.month === month && p.year === year);
+    const existingPlan = useAppStore.getState().plans.find(
+      p => (p.teacherId === currentUser.id || (p as any).user_id === currentUser.id) && Number(p.month) === Number(month) && Number(p.year) === Number(year)
+    );
     if (existingPlan) {
       setError(`Bạn đã có kế hoạch cho tháng ${month}/${year}. Mỗi giáo viên chỉ được tạo 1 kế hoạch trong 1 tháng!`);
       return;
@@ -147,6 +149,33 @@ const NewPlanModal = ({ onClose, onCreated }: { onClose: () => void; onCreated: 
             {error}
           </div>
         )}
+        {(() => {
+          const existingPlan = useAppStore.getState().plans.find(
+            p => (p.teacherId === currentUser?.id || (p as any).user_id === currentUser?.id) && Number(p.month) === Number(planMonth) && Number(p.year) === Number(planYear)
+          );
+          if (!existingPlan) return null;
+          return (
+            <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-2xl text-amber-900 text-sm space-y-2">
+              <div className="flex items-center justify-between font-bold">
+                <span>Kế hoạch tháng {planMonth}/{planYear} đã tồn tại</span>
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-200 text-amber-800">{existingPlan.status}</span>
+              </div>
+              <p className="text-xs text-amber-800 leading-relaxed">
+                Bạn đã tạo kế hoạch cho tháng này. Bạn có thể mở kế hoạch này để xem hoặc tiếp tục chỉnh sửa.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onSelectPlan(existingPlan);
+                }}
+                className="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs shadow-sm transition-all flex items-center justify-center gap-1.5"
+              >
+                <Eye size={14} /> Mở kế hoạch tháng {planMonth}/{planYear}
+              </button>
+            </div>
+          );
+        })()}
         <div className="space-y-4">
           <div>
             <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">Tên kế hoạch</label>
@@ -227,7 +256,7 @@ const NewPlanModal = ({ onClose, onCreated }: { onClose: () => void; onCreated: 
           </button>
           <button
             onClick={handleCreate}
-            disabled={!title.trim() || submitting}
+            disabled={!title.trim() || submitting || !!useAppStore.getState().plans.find(p => (p.teacherId === currentUser?.id || (p as any).user_id === currentUser?.id) && Number(p.month) === Number(planMonth) && Number(p.year) === Number(planYear))}
             className="flex-1 py-2.5 bg-primary text-white rounded-xl text-sm font-bold shadow-md hover:opacity-90 disabled:opacity-40 transition-all"
           >
             {submitting ? 'Đang tạo...' : 'Tiếp tục lập chi tiết'}
@@ -589,12 +618,11 @@ const MyPlans = ({ onSelectPlan }: { onSelectPlan: (plan: Plan) => void }) => {
         </div>
         {currentUser?.role === 'TEACHER' && (
           <button
-            onClick={handleCreateNewPlan}
-            disabled={creatingPlan}
-            className="btn-primary disabled:opacity-60"
+            onClick={() => setShowNewModal(true)}
+            className="btn-primary"
           >
             <Plus size={16} />
-            {creatingPlan ? 'Đang mở form...' : 'Lập kế hoạch mới'}
+            Lập kế hoạch mới
           </button>
         )}
         {currentUser?.role === 'DEPT_HEAD' && (
@@ -943,6 +971,10 @@ const MyPlans = ({ onSelectPlan }: { onSelectPlan: (plan: Plan) => void }) => {
         {showNewModal && (
           <NewPlanModal
             onClose={() => setShowNewModal(false)}
+            onSelectPlan={(existingPlan) => {
+              setShowNewModal(false);
+              onSelectPlan(existingPlan);
+            }}
             onCreated={(newPlan) => {
               setShowNewModal(false);
               if (newPlan) onSelectPlan(newPlan);

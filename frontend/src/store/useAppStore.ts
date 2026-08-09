@@ -655,6 +655,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     try {
       await trpcClient.plans.updateStatus.mutate({ id, status: status as any, comment });
+      get().fetchPlans();
     } catch (error) {
       console.warn('Failed to update status on server, kept local change:', error);
     }
@@ -698,6 +699,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       const response = await trpcClient.plans.create.mutate(payload as any);
       const createdPlan = mapPlan(response);
       set((state) => ({ plans: [createdPlan, ...state.plans] }));
+      get().fetchPlans();
       return createdPlan;
     } catch (error) {
       console.error('Failed to create plan on server:', error);
@@ -742,6 +744,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       set((state) => ({
         plans: state.plans.map(p => p.id === String(planId) ? updatedPlan : p)
       }));
+      get().fetchPlans();
     } catch (error) {
       console.error('Failed to update plan on server:', error);
       throw error;
@@ -755,6 +758,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({ plans: state.plans.filter(p => p.id !== String(planId)) }));
     try {
       await trpcClient.plans.delete.mutate({ id });
+      get().fetchPlans();
     } catch (error: any) {
       console.error('Failed to delete plan on server:', error);
       set({ plans: originalPlans });
