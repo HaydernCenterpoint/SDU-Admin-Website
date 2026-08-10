@@ -471,7 +471,7 @@ const MyPlans = ({ onSelectPlan }: { onSelectPlan: (plan: Plan) => void }) => {
   const userPlans = currentUser?.role === 'BOARD'
     ? plans.filter(p => ['DEPT_APPROVED_TO_BGH', 'REPORT_SUBMITTED', 'ACCEPTED_TO_BGH'].includes(p.status))
     : currentUser?.role === 'DEPT_HEAD'
-      ? plans.filter(p => p.departmentId == currentUser.departmentId)
+      ? plans.filter(p => p.departmentId == currentUser.departmentId && p.status !== 'DRAFT')
       : plans.filter(p => p.teacherId === currentUser?.id || (p as any).user_id === currentUser?.id);
   const availableMonths = Array.from(new Set(userPlans.map(p => `Tháng ${p.month}/${p.year}`)));
 
@@ -738,123 +738,7 @@ const MyPlans = ({ onSelectPlan }: { onSelectPlan: (plan: Plan) => void }) => {
                   <h3 className="font-black text-navy text-base">{monthKey}</h3>
                 </div>
                 <div className="p-4 space-y-6">
-                  {['DEPT_HEAD', 'BOARD'].includes(currentUser?.role || '') ? (() => {
-                    const approvedPlans = groupedPlans[monthKey].filter((p: Plan) => ['DEPT_APPROVED_TO_BGH', 'REPORT_SUBMITTED', 'ACCEPTED_TO_BGH'].includes(p.status));
-                    if (approvedPlans.length === 0) return <div className="text-center text-zinc-500 py-4 text-sm font-medium">Chưa có kế hoạch nào được duyệt trong tháng này.</div>;
-                    
-                    const byTemplate = approvedPlans.reduce((acc: any, p: Plan) => {
-                      const tId = currentUser?.role === 'BOARD' ? (p.departmentId || 'D_unkn') : (p.templateId || 'tpl-1');
-                      if (!acc[tId]) acc[tId] = [];
-                      acc[tId].push(p);
-                      return acc;
-                    }, {});
-
-                    return Object.keys(byTemplate).map((tplId) => {
-                      const plansForTpl = byTemplate[tplId];
-                      const template = getPlanTemplate(plansForTpl[0]);
-                      const allItems = plansForTpl.flatMap((p: Plan) => (p.items || []).map((item: any) => ({ ...item, _planRef: p })));
-                      
-                      const groupTitle = currentUser?.role === 'BOARD' 
-                        ? (departments.find(d => d.id == tplId)?.name || 'Khoa (Không xác định)') 
-                        : template.name;
-
-                      // Apply Evaluation Filter (PASS / FAIL) to items
-                      const filteredItems = allItems.filter((item: any) => {
-                        if (filterStatus === 'ALL') return true;
-                        const p = item._planRef;
-                        let totalKh = 0, totalTh = 0;
-                        const isCompleted = ['COMPLETED', 'REPORT_SUBMITTED', 'ACCEPTED_TO_BGH'].includes(p.status || '');
-                        p.weeks?.forEach((w: any) => {
-                          const ph = Number(w.plannedHours || 0);
-                          totalKh += ph;
-                          if (isCompleted) totalTh += ph;
-                        });
-
-                        const hasAnySchedule = totalKh > 0;
-                        const isPass = hasAnySchedule && (totalTh >= totalKh);
-                        if (filterStatus === 'PASS') return isPass;
-                        if (filterStatus === 'FAIL') return !isPass || !hasAnySchedule;
-                        return true;
-                      });
-
-                      if (filteredItems.length === 0) return null; // Skip this block if no items match
-
-                      return (
-                        <div key={tplId} className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col relative z-0 mb-8">
-                           <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex flex-wrap gap-4 items-center justify-between">
-                             <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
-                               {groupTitle}
-                               <span className="bg-white px-2.5 py-0.5 rounded-full text-xs font-bold text-slate-500 border border-slate-200 shadow-sm">{filteredItems.length} mục</span>
-                             </h3>
-                           </div>
-                           <div className="p-0 overflow-x-auto">
-                              <table className="w-full text-left min-w-[1100px] border-collapse bg-white">
-                                <thead>
-                                  <tr className="bg-zinc-100/50 text-xs font-bold text-slate-600 uppercase tracking-widest border-b-2 border-slate-200">
-                                    {template.columns.map((col: any) => (
-                                      <th key={col.id} className={`border border-slate-200 px-4 py-4 ${col.width || 'min-w-[150px]'} ${col.align === 'center' ? 'text-center' : ''}`}>
-                                        {col.name}
-                                      </th>
-                                    ))}
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-zinc-300">
-                                  {filteredItems.map((item: any, idx: number) => {
-                                    const p = item._planRef;
-                                    let totalKh = 0, totalTh = 0;
-                                    const isCompleted = ['COMPLETED', 'REPORT_SUBMITTED', 'ACCEPTED_TO_BGH'].includes(p.status || '');
-                                    p.weeks?.forEach((w: any) => {
-                                        const ph = Number(w.plannedHours || 0);
-                                        totalKh += ph;
-                                        if (isCompleted) totalTh += ph;
-                                      });
-
-                                      return (
-                                        <tr key={`${p.id}-${item.id || idx}`} className="hover:bg-slate-50 align-top group transition-colors">
-                                          {template.columns.map((col: any) => (
-                                            <td key={col.id} className={`px-4 py-4 text-xs border border-slate-200 ${col.align === 'center' ? 'text-center align-middle' : ''}`}>
-                                              {col.id === 'tt' ? (
-                                                <span className="font-bold text-slate-500">{idx + 1}</span>
-                                              ) : col.id === 'giang_vien' ? (
-                                                <button 
-                                                  onClick={() => {
-                                                    const foundUser = users.find(u => u.id === p.teacherId);
-                                                    if (foundUser) setSelectedProfile(foundUser);
-                                                  }}
-                                                  className="text-slate-800 font-bold whitespace-pre-wrap hover:text-primary hover:underline transition-colors text-left"
-                                                  title="Xem hồ sơ giáo viên"
-                                                >
-                                                  {item[col.id] || p.teacherName}
-                                                </button>
-                                              ) : col.id === 'thoi_gian' ? (
-                                                <span className="text-slate-800 font-medium whitespace-pre-wrap">{formatThoiGian(p)}</span>
-                                              ) : col.id === 'ghi_chu' ? (
-                                                <span className="whitespace-pre-wrap font-bold">
-                                                  {totalKh === 0 && totalTh === 0 ? (
-                                                    <span className="text-slate-300 italic font-medium">Chưa có thông tin</span>
-                                                  ) : totalTh >= totalKh ? (
-                                                    <span className="text-emerald-600">Đạt yêu cầu</span>
-                                                  ) : (
-                                                    <span className="text-red-600">Chưa đạt yêu cầu</span>
-                                                  )}
-                                                </span>
-                                              ) : (
-                                                <span className={`${col.name.toLowerCase().includes('giờ') ? 'text-sm font-bold text-[#CC0000]' : 'text-slate-700 whitespace-pre-wrap'}`}>
-                                                  {item[col.id] || ''}
-                                                </span>
-                                              )}
-                                            </td>
-                                          ))}
-                                        </tr>
-                                      );
-                                    })}
-                                </tbody>
-                              </table>
-                           </div>
-                        </div>
-                      );
-                    });
-                  })() : groupedPlans[monthKey].map((plan: Plan) => (
+                  {groupedPlans[monthKey].map((plan: Plan) => (
                     <div key={plan.id} className="border border-zinc-200 rounded-xl overflow-hidden bg-white shadow-sm relative group">
                       {/* Red accent strip */}
                       <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#CC0000] to-[#FF6666] scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-300" />
@@ -866,14 +750,33 @@ const MyPlans = ({ onSelectPlan }: { onSelectPlan: (plan: Plan) => void }) => {
                             <FileText size={18} />
                           </div>
                           <div>
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <StatusBadge status={plan.status} />
                               <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{plan.code}</span>
+                              {(currentUser?.role === 'BOARD' || currentUser?.role === 'ADMIN') && (
+                                <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                                  {departments.find(d => d.id == plan.departmentId)?.name || 'Khoa'}
+                                </span>
+                              )}
                             </div>
-                            <h3 className="font-black text-navy text-sm leading-tight">{plan.title}</h3>
+                            <h3 className="font-black text-navy text-sm leading-tight flex items-center gap-2 flex-wrap">
+                              {plan.title}
+                              {plan.teacherName && (
+                                <button 
+                                  onClick={() => {
+                                    const foundUser = users.find(u => u.id === plan.teacherId);
+                                    if (foundUser) setSelectedProfile(foundUser);
+                                  }}
+                                  className="text-xs font-bold text-slate-500 hover:text-primary hover:underline transition-colors"
+                                  title="Xem hồ sơ giáo viên"
+                                >
+                                  — {plan.teacherName}
+                                </button>
+                              )}
+                            </h3>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           {plan.updatedAt && plan.createdAt && new Date(plan.updatedAt).getTime() > new Date(plan.createdAt).getTime() + 2000 && (
                             <span className="text-[10px] text-zinc-400 font-medium italic mr-2">
                               Chỉnh sửa lần cuối: {new Date(plan.updatedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} {new Date(plan.updatedAt).toLocaleDateString('vi-VN')}
@@ -881,11 +784,11 @@ const MyPlans = ({ onSelectPlan }: { onSelectPlan: (plan: Plan) => void }) => {
                           )}
                           <button
                             onClick={() => onSelectPlan(plan)}
-                            className="px-4 py-2 bg-navy text-white font-bold text-xs rounded-xl hover:bg-[#CC0000] transition-all flex items-center gap-1.5"
+                            className="px-4 py-2 bg-navy text-white font-bold text-xs rounded-xl hover:bg-[#CC0000] transition-all flex items-center gap-1.5 shadow-sm"
                           >
-                            <Eye size={14} /> Chỉnh sửa / Chi tiết
+                            <Eye size={14} /> Xem chi tiết
                           </button>
-                          {(plan.status === 'DRAFT' || plan.status === 'DEPT_REJECTED_PHASE1') && (
+                          {currentUser?.role === 'TEACHER' && (plan.status === 'DRAFT' || plan.status === 'DEPT_REJECTED_PHASE1') && (
                             <button
                               onClick={() => handleQuickSubmit(plan)}
                               className="px-4 py-2 bg-primary/10 text-primary font-bold text-xs rounded-xl hover:bg-primary hover:text-white transition-all flex items-center gap-1.5"
@@ -893,7 +796,7 @@ const MyPlans = ({ onSelectPlan }: { onSelectPlan: (plan: Plan) => void }) => {
                               <Send size={14} /> Gửi duyệt
                             </button>
                           )}
-                          {(plan.status === 'DRAFT' || plan.status === 'DEPT_REJECTED_PHASE1' || plan.status === 'DEPT_REJECTED_PHASE2') && (
+                          {currentUser?.role === 'TEACHER' && (plan.status === 'DRAFT' || plan.status === 'DEPT_REJECTED_PHASE1' || plan.status === 'DEPT_REJECTED_PHASE2') && (
                             <button
                               onClick={() => setPlanToDelete(plan)}
                               className="p-2 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
@@ -922,13 +825,22 @@ const MyPlans = ({ onSelectPlan }: { onSelectPlan: (plan: Plan) => void }) => {
                               <tr><td colSpan={getPlanTemplate(plan).columns.length} className="py-4 text-center text-sm text-zinc-500">Chưa có chi tiết</td></tr>
                             ) : (
                               plan.items.map((item: any, idx: number) => (
-                                <tr key={item.id} className="hover:bg-blue-50/20 align-top group">
-                                  {getPlanTemplate(plan).columns.map((col, cIdx) => (
+                                <tr key={item.id || idx} className="hover:bg-blue-50/20 align-top group">
+                                  {getPlanTemplate(plan).columns.map((col) => (
                                     <td key={col.id} className={`border border-zinc-300 px-2 py-3 text-xs ${col.align === 'center' ? 'text-center align-middle' : ''}`}>
                                       {col.id === 'tt' ? (
                                         <span className="font-bold text-zinc-600">{idx + 1}</span>
                                       ) : col.id === 'giang_vien' ? (
-                                        <span className="text-zinc-900 font-medium whitespace-pre-wrap">{item[col.id] || plan.teacherName}</span>
+                                        <button 
+                                          onClick={() => {
+                                            const foundUser = users.find(u => u.id === plan.teacherId);
+                                            if (foundUser) setSelectedProfile(foundUser);
+                                          }}
+                                          className="text-zinc-900 font-bold whitespace-pre-wrap hover:text-primary hover:underline transition-colors text-left"
+                                          title="Xem hồ sơ giáo viên"
+                                        >
+                                          {item[col.id] || plan.teacherName}
+                                        </button>
                                       ) : col.id === 'thoi_gian' ? (
                                         <span className="text-zinc-900 whitespace-pre-wrap">{formatThoiGian(plan)}</span>
                                       ) : col.id === 'ghi_chu' ? (
