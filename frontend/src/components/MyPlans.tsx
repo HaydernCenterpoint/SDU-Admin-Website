@@ -151,17 +151,23 @@ const NewPlanModal = ({ onClose, onCreated, onSelectPlan }: { onClose: () => voi
         )}
         {(() => {
           const existingPlan = useAppStore.getState().plans.find(
-            p => (p.teacherId === currentUser?.id || (p as any).user_id === currentUser?.id) && Number(p.month) === Number(planMonth) && Number(p.year) === Number(planYear)
+            p => (p.teacherId === currentUser?.id || (p as any).user_id === currentUser?.id) 
+              && Number(p.month) === Number(planMonth) 
+              && Number(p.year) === Number(planYear)
+              && p.status !== 'CANCELLED'
           );
           if (!existingPlan) return null;
+          const isRejected = existingPlan.status?.includes('REJECTED');
           return (
-            <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-2xl text-amber-900 text-sm space-y-2">
+            <div className={`mb-4 p-4 border rounded-2xl text-sm space-y-2 ${isRejected ? 'bg-red-50 border-red-200 text-red-900' : 'bg-amber-50 border-amber-200 text-amber-900'}`}>
               <div className="flex items-center justify-between font-bold">
                 <span>Kế hoạch tháng {planMonth}/{planYear} đã tồn tại</span>
-                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-200 text-amber-800">{existingPlan.status}</span>
+                <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${isRejected ? 'bg-red-200 text-red-800' : 'bg-amber-200 text-amber-800'}`}>{existingPlan.status}</span>
               </div>
-              <p className="text-xs text-amber-800 leading-relaxed">
-                Bạn đã tạo kế hoạch cho tháng này. Bạn có thể mở kế hoạch này để xem hoặc tiếp tục chỉnh sửa.
+              <p className={`text-xs leading-relaxed ${isRejected ? 'text-red-800' : 'text-amber-800'}`}>
+                {isRejected 
+                  ? 'Kế hoạch tháng này đã bị Trưởng khoa/BGH từ chối. Bạn không cần tạo kế hoạch mới mà hãy mở lại kế hoạch bị từ chối để chỉnh sửa và gửi duyệt lại.'
+                  : 'Bạn đã tạo kế hoạch cho tháng này. Bạn có thể mở kế hoạch này để xem hoặc tiếp tục chỉnh sửa.'}
               </p>
               <button
                 type="button"
@@ -169,9 +175,9 @@ const NewPlanModal = ({ onClose, onCreated, onSelectPlan }: { onClose: () => voi
                   onClose();
                   onSelectPlan(existingPlan);
                 }}
-                className="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs shadow-sm transition-all flex items-center justify-center gap-1.5"
+                className={`w-full py-2 text-white font-bold rounded-xl text-xs shadow-sm transition-all flex items-center justify-center gap-1.5 ${isRejected ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'}`}
               >
-                <Eye size={14} /> Mở kế hoạch tháng {planMonth}/{planYear}
+                <Eye size={14} /> {isRejected ? `Mở & sửa kế hoạch tháng ${planMonth}/${planYear}` : `Mở kế hoạch tháng ${planMonth}/${planYear}`}
               </button>
             </div>
           );
@@ -256,7 +262,7 @@ const NewPlanModal = ({ onClose, onCreated, onSelectPlan }: { onClose: () => voi
           </button>
           <button
             onClick={handleCreate}
-            disabled={!title.trim() || submitting || !!useAppStore.getState().plans.find(p => (p.teacherId === currentUser?.id || (p as any).user_id === currentUser?.id) && Number(p.month) === Number(planMonth) && Number(p.year) === Number(planYear))}
+            disabled={!title.trim() || submitting || !!useAppStore.getState().plans.find(p => (p.teacherId === currentUser?.id || (p as any).user_id === currentUser?.id) && Number(p.month) === Number(planMonth) && Number(p.year) === Number(planYear) && p.status !== 'CANCELLED')}
             className="flex-1 py-2.5 bg-primary text-white rounded-xl text-sm font-bold shadow-md hover:opacity-90 disabled:opacity-40 transition-all"
           >
             {submitting ? 'Đang tạo...' : 'Tiếp tục lập chi tiết'}

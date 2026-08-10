@@ -42,7 +42,7 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 const PlanEditor: React.FC<PlanEditorProps> = ({ plan, onClose }) => {
-  const { currentUser, updatePlanStatus, tableTemplates, updateTableTemplate } = useAppStore();
+  const { currentUser, updatePlanStatus, tableTemplates, updateTableTemplate, deletePlan } = useAppStore();
   const [title, setTitle] = useState(plan.title);
   const [activeTab, setActiveTab] = useState<'details' | 'history'>('details');
   const [activeTable, setActiveTable] = useState<'teacher' | 'student'>('teacher');
@@ -220,6 +220,14 @@ const PlanEditor: React.FC<PlanEditorProps> = ({ plan, onClose }) => {
     onClose();
   };
 
+  // Delete plan logic
+  const handleDelete = async () => {
+    if (window.confirm('Bạn có chắc chắn muốn xóa/hủy kế hoạch này? Giáo viên sẽ có thể lập lại kế hoạch mới cho tháng này.')) {
+      await deletePlan(plan.id);
+      onClose();
+    }
+  };
+
   return (
     <div className="bg-white rounded-[2.5rem] overflow-hidden flex flex-col h-full w-full">
       {/* Header */}
@@ -281,6 +289,15 @@ const PlanEditor: React.FC<PlanEditorProps> = ({ plan, onClose }) => {
                 <CheckCheck size={14} /> {canApproveDeptHead ? 'Trưởng khoa Duyệt' : 'BGH Phê duyệt'}
               </button>
             </>
+          )}
+          {(isDeptHead || isBoardAdmin || isOwner) && (
+            <button
+              onClick={handleDelete}
+              className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-xs font-bold hover:bg-rose-100 transition-all"
+              title="Xóa kế hoạch này"
+            >
+              <Trash2 size={14} /> Xóa kế hoạch
+            </button>
           )}
           
 

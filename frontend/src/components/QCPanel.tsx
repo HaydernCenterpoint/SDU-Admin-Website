@@ -84,7 +84,7 @@ const QCPanel = () => {
   };
 
   // ----- Analytics Computation -----
-  const validPlans = plans.filter(p => p.status !== 'DRAFT'); // Filter out drafts for QC/Board
+  const validPlans = plans.filter(p => p.status !== 'DRAFT' && p.status !== 'CANCELLED'); // Filter out drafts & cancelled for QC/Board
   
   const matchSemester = (p: any, semester: string) => {
     if (semester === 'ALL') return true;

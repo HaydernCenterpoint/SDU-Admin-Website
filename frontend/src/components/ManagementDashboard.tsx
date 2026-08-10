@@ -85,6 +85,7 @@ const ManagementDashboard = () => {
 
   const validPlans = plans.filter(p => 
     p.status !== 'DRAFT' && 
+    p.status !== 'CANCELLED' && 
     !deptHeadIds.has(p.teacherId?.toString()) &&
     matchSemester(p, selectedSemester)
   );

@@ -403,8 +403,8 @@ const Summary: React.FC<SummaryProps> = ({ onSelectPlan }) => {
     api.get('/users/active').then((res: any) => setUsers(res.data)).catch(console.error);
   }, []);
 
-  // Include ALL plans except DRAFT, so we can show "Đang tiến hành"
-  const summaryPlans = plans.filter(p => !['DRAFT', 'DEPT_REJECTED_PHASE1'].includes(p.status));
+  // Include ALL plans except DRAFT, DEPT_REJECTED_PHASE1, and CANCELLED
+  const summaryPlans = plans.filter(p => !['DRAFT', 'DEPT_REJECTED_PHASE1', 'CANCELLED'].includes(p.status));
 
   const filteredPlans = summaryPlans.filter(p => {
     // Filter by selected month and year

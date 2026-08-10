@@ -109,6 +109,9 @@ export class PlansService {
         userId: actor.id,
         month: input.month,
         year: input.year,
+        status: {
+          not: PlanStatus.CANCELLED,
+        },
       },
     });
     if (existing) {
@@ -278,15 +281,24 @@ export class PlansService {
   }
 
   // ─── delete ───────────────────────────────────────────────────────────
-  async delete(actor: { id: number; role: UserRole }, id: number) {
+  async delete(actor: { id: number; role: UserRole; departmentId?: number | null }, id: number) {
     const plan = await this.prisma.plan.findUnique({ where: { id } });
     if (!plan) throw new NotFoundException();
-    if (plan.userId !== actor.id && actor.role !== UserRole.ADMIN) {
-      throw new ForbiddenException('Không có quyền xóa');
+
+    const isOwner = plan.userId === actor.id;
+    const isDeptHead = actor.role === UserRole.DEPT_HEAD && actor.departmentId != null && plan.departmentId === actor.departmentId;
+    const isBoardOrAdmin = actor.role === UserRole.BOARD || actor.role === UserRole.ADMIN;
+
+    if (!isOwner && !isDeptHead && !isBoardOrAdmin) {
+      throw new ForbiddenException('Không có quyền xóa kế hoạch này');
     }
-    if (![PlanStatus.DRAFT, PlanStatus.DEPT_REJECTED_PHASE1, PlanStatus.DEPT_REJECTED_PHASE2].includes(plan.status as PlanStatus)) {
-      throw new BadRequestException('Chỉ có thể xóa kế hoạch ở trạng thái DRAFT/REJECTED');
+
+    if (isOwner && !isDeptHead && !isBoardOrAdmin) {
+      if (![PlanStatus.DRAFT, PlanStatus.DEPT_REJECTED_PHASE1, PlanStatus.DEPT_REJECTED_PHASE2, PlanStatus.CANCELLED].includes(plan.status as PlanStatus)) {
+        throw new BadRequestException('Chỉ có thể xóa kế hoạch ở trạng thái DRAFT/REJECTED/CANCELLED');
+      }
     }
+
     await this.prisma.plan.delete({ where: { id } });
     return { success: true };
   }
