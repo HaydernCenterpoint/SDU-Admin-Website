@@ -14,7 +14,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { UserRole, UserStatus, ActivityType } from '@prisma/client';
+import { Prisma, UserRole, UserStatus, ActivityType } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
 const ROLES_BOARD_CAN_MANAGE: UserRole[] = [UserRole.DEPT_HEAD, UserRole.QC];
@@ -95,14 +95,14 @@ export class UsersService {
   async listPendingProfiles(actor: { role: UserRole; departmentId: number | null; id: number }) {
     if (ROLES_ADMIN_QC.includes(actor.role)) {
       return this.prisma.user.findMany({
-        where: { pendingProfile: { not: undefined } },
+        where: { pendingProfile: { not: Prisma.DbNull } },
         include: { department: true },
       });
     }
     if (actor.role === UserRole.BOARD) {
       return this.prisma.user.findMany({
         where: {
-          pendingProfile: { not: undefined },
+          pendingProfile: { not: Prisma.DbNull },
           role: { in: ROLES_BOARD_CAN_MANAGE },
         },
         include: { department: true },
@@ -111,7 +111,7 @@ export class UsersService {
     if (actor.role === UserRole.DEPT_HEAD) {
       return this.prisma.user.findMany({
         where: {
-          pendingProfile: { not: undefined },
+          pendingProfile: { not: Prisma.DbNull },
           role: UserRole.TEACHER,
           departmentId: actor.departmentId,
         },
@@ -192,7 +192,7 @@ export class UsersService {
     },
   ) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new NotFoundException();
+    if (!user) throw new NotFoundException('Người dùng không tồn tại');
 
     if (input.password) {
       if (!input.currentPassword) {
@@ -224,7 +224,7 @@ export class UsersService {
           dob: pendingProfile.dob ? new Date(pendingProfile.dob) : null,
           gender: pendingProfile.gender as any,
           ...(pendingProfile.password && { password: pendingProfile.password }),
-          pendingProfile: undefined,
+          pendingProfile: Prisma.DbNull,
         },
         include: { department: true },
       });
@@ -247,24 +247,36 @@ export class UsersService {
 
   async approveProfile(actor: { role: UserRole; departmentId: number | null; id: number }, userId: number) {
     const target = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!target) throw new NotFoundException();
+    if (!target) throw new NotFoundException('Người dùng không tồn tại');
     if (!this.canManageUser(actor, target)) {
       throw new ForbiddenException('Không có quyền duyệt hồ sơ này.');
     }
     const updates = target.pendingProfile as any;
-    if (!updates) throw new BadRequestException('Không có yêu cầu cập nhật.');
+    if (!updates || typeof updates !== 'object') {
+      throw new BadRequestException('Không có yêu cầu cập nhật.');
+    }
 
     const allowed = ['name', 'departmentId', 'email', 'contactEmail', 'dob', 'gender', 'password'] as const;
     const filtered = Object.fromEntries(
       Object.entries(updates).filter(([k]) => allowed.includes(k as any)),
     );
 
+    let dobVal: Date | null | undefined = undefined;
+    if ('dob' in filtered) {
+      if (!filtered.dob) {
+        dobVal = null;
+      } else {
+        const parsed = new Date(filtered.dob as string);
+        dobVal = isNaN(parsed.getTime()) ? null : parsed;
+      }
+    }
+
     const updated = await this.prisma.user.update({
       where: { id: userId },
       data: {
         ...filtered,
-        dob: filtered['dob'] ? new Date(filtered['dob'] as string) : undefined,
-        pendingProfile: undefined,
+        ...(dobVal !== undefined && { dob: dobVal }),
+        pendingProfile: Prisma.DbNull,
       },
       include: { department: true },
     });
@@ -273,14 +285,15 @@ export class UsersService {
 
   async rejectProfile(actor: { role: UserRole; departmentId: number | null; id: number }, userId: number) {
     const target = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!target) throw new NotFoundException();
+    if (!target) throw new NotFoundException('Người dùng không tồn tại');
     if (!this.canManageUser(actor, target)) {
       throw new ForbiddenException('Không có quyền từ chối hồ sơ này.');
     }
     await this.prisma.user.update({
       where: { id: userId },
-      data: { pendingProfile: undefined },
+      data: { pendingProfile: Prisma.DbNull },
     });
     return { message: 'Đã từ chối cập nhật hồ sơ.' };
   }
 }
+
