@@ -115,7 +115,7 @@ export const generateMockPlans = (): Plan[] => {
       { id: 'alog3', actor: 'TS. Nguyễn Phương Tỵ', action: 'Phê duyệt Kế hoạch', timestamp: '2025-12-01T14:30:00Z', comment: 'Đồng ý khai thác các thiết bị.' },
       { id: 'alog4', actor: 'Phạm Văn Tuấn', action: 'Nộp báo cáo', timestamp: '2025-12-30T16:00:00Z' },
       { id: 'alog5', actor: 'TS. Nguyễn Phương Tỵ', action: 'Nghiệm thu Thực tế', timestamp: '2025-12-31T09:00:00Z', comment: 'Nghiệm thu Đạt.' },
-      { id: 'alog6', actor: 'TS. Đỗ Văn Đỉnh', action: 'Ban Giám Hiệu Xác Nhận', timestamp: '2025-12-31T15:00:00Z', comment: 'Thống nhất nghiệm thu kết quả tháng 12 năm 2025 Khoa Điện.' }
+      { id: 'alog6', actor: 'TS. Nguyễn Trọng Các', action: 'Ban Giám Hiệu Xác Nhận', timestamp: '2025-12-31T15:00:00Z', comment: 'Thống nhất nghiệm thu kết quả tháng 12 năm 2025 Khoa Điện.' }
     ],
     score: 100,
     feedback: 'Hoàn thành suất sắc khối lượng công việc, ứng dụng tốt thiết bị.'

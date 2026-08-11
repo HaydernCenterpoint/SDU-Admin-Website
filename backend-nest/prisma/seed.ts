@@ -42,6 +42,21 @@ async function main() {
     },
   });
 
+  // 2b. Update BOARD user to Nguyễn Trọng Các (01006027)
+  await prisma.user.updateMany({
+    where: {
+      OR: [
+        { id: 2 },
+        { email: '01006030' },
+        { name: 'Đỗ Văn Đỉnh' },
+      ],
+    },
+    data: {
+      name: 'Nguyễn Trọng Các',
+      email: '01006027',
+    },
+  });
+
   // 3. Demo teachers (5 per dept = 25 users)
   const hash = await bcrypt.hash('password123', 10);
   const allDepts = await prisma.department.findMany();
