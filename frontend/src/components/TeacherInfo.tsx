@@ -224,7 +224,7 @@ const PendingProfilesModal = ({ onClose }: { onClose: () => void }) => {
                             {changes.contact_email && changes.contact_email !== user.contact_email && <li><b>Email:</b> {changes.contact_email}</li>}
                             {changes.dob && changes.dob !== user.dob && <li><b>Ngày sinh:</b> {changes.dob}</li>}
                             {changes.gender && changes.gender !== user.gender && <li><b>Giới tính:</b> {changes.gender}</li>}
-                            {changes.department_id && changes.department_id !== user.department_id && <li><b>Khoa:</b> {changes.department_id}</li>}
+                            {(changes.departmentId || changes.department_id) && (changes.departmentId || changes.department_id) !== (user.departmentId || user.department_id) && <li><b>Khoa mới (ID):</b> {changes.departmentId || changes.department_id}</li>}
                             {changes.password && <li><b>(Có đổi mật khẩu)</b></li>}
                           </ul>
                         </td>
@@ -297,7 +297,8 @@ const TeacherInfo = ({ onSelectPlan }: { onSelectPlan: (plan: Plan) => void }) =
 
   const filteredUsers = activeUsers.filter(u => {
     if (selectedDept !== 'ALL') {
-      return u.department_id === Number(selectedDept) || u.department_id === selectedDept;
+      const deptId = u.departmentId ?? u.department_id;
+      return Number(deptId) === Number(selectedDept) || String(deptId) === String(selectedDept);
     }
     return true;
   });

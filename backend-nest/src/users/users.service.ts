@@ -17,7 +17,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Prisma, UserRole, UserStatus, ActivityType } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
-const ROLES_BOARD_CAN_MANAGE: UserRole[] = [UserRole.DEPT_HEAD, UserRole.QC];
+const ROLES_BOARD_CAN_MANAGE: UserRole[] = [UserRole.TEACHER, UserRole.DEPT_HEAD, UserRole.QC];
 const ROLES_BOARD_CAN_DELETE: UserRole[] = [UserRole.TEACHER, UserRole.DEPT_HEAD, UserRole.QC];
 const ROLES_ADMIN_BOARD_QC: UserRole[] = [UserRole.ADMIN, UserRole.BOARD, UserRole.QC];
 const ROLES_DEPT_HEAD_TEACHER: UserRole[] = [UserRole.DEPT_HEAD, UserRole.TEACHER];
